@@ -7,24 +7,24 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   :root {
-    --bg: #F2F4F7;
-    --bg-soft: #EBEEF3;
+    --bg: #FFFFFF;
+    --bg-soft: #F7F7F7;
     --card: #FFFFFF;
-    --card-hover: #F5F7FA;
-    --border: #E2E6EC;
-    --border-soft: #EAECEF;
-    --text: #1F2430;
-    --text-soft: #6B7280;
-    --text-mute: #9CA3AF;
-    --accent: #4A6B8A;
-    --accent-light: #6B8BAE;
-    --accent-bg: rgba(74,107,138,0.1);
-    --tag-red: #C75B5B;
-    --tag-orange: #D4873C;
-    --tag-green: #5A8A5A;
-    --tag-blue: #4A7FA0;
-    --tag-purple: #8B6FAA;
-    --shadow: 0 2px 8px rgba(31,36,48,0.06);
+    --card-hover: #FAFAFA;
+    --border: #E3E3E3;
+    --border-soft: #ECECEC;
+    --text: #111111;
+    --text-soft: #5F5F5F;
+    --text-mute: #9A9A9A;
+    --accent: #111111;
+    --accent-light: #333333;
+    --accent-bg: rgba(0,0,0,0.05);
+    --tag-red: #444444;
+    --tag-orange: #444444;
+    --tag-green: #111111;
+    --tag-blue: #444444;
+    --tag-purple: #444444;
+    --shadow: 0 1px 4px rgba(0,0,0,0.04);
   }
   body {
     font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
@@ -180,10 +180,10 @@
     font-size: 10px; padding: 2px 8px; border-radius: 10px;
     font-weight: 500;
   }
-  .status-todo { background: rgba(212,135,60,0.15); color: var(--tag-orange); }
-  .status-review { background: rgba(199,91,91,0.12); color: var(--tag-red); }
-  .status-doing { background: rgba(74,127,160,0.15); color: var(--tag-blue); }
-  .status-done { background: rgba(90,138,90,0.15); color: var(--tag-green); }
+  .status-todo { background: rgba(0,0,0,0.06); color: #444; }
+  .status-review { background: rgba(0,0,0,0.06); color: #444; }
+  .status-doing { background: rgba(0,0,0,0.08); color: #111; }
+  .status-done { background: #111; color: #fff; }
   .task-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
   .task-desc { font-size: 12px; color: var(--text-soft); line-height: 1.6; margin-bottom: 10px; }
   .task-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
@@ -192,10 +192,10 @@
     background: var(--bg-soft); color: var(--text-soft);
   }
   .task-tag.hot { background: var(--accent-bg); color: var(--accent); font-weight: 500; }
-  .tag.dim-hardcore { background: rgba(74,107,138,0.12); color: var(--accent); }
-  .tag.dim-safety { background: rgba(90,138,90,0.12); color: var(--tag-green); }
-  .tag.dim-scene { background: rgba(74,127,160,0.12); color: var(--tag-blue); }
-  .tag.dim-brand { background: rgba(212,135,60,0.12); color: var(--tag-orange); }
+  .tag.dim-hardcore { background: #111; color: #fff; }
+  .tag.dim-safety { background: #444; color: #fff; }
+  .tag.dim-scene { background: #777; color: #fff; }
+  .tag.dim-brand { background: #fff; color: #111; border: 1px solid #111; }
   .task-actions { display: flex; gap: 6px; }
   .task-action-btn {
     font-size: 11px; padding: 4px 10px; border-radius: 6px;
@@ -221,10 +221,10 @@
     background: var(--bg-soft); color: var(--text-soft);
     cursor: pointer; flex-shrink: 0;
   }
-  .reminder-action.review { background: rgba(199,91,91,0.1); color: var(--tag-red); }
-  .reminder-action.coop { background: rgba(212,135,60,0.1); color: var(--tag-orange); }
-  .reminder-action.backup { background: var(--accent-bg); color: var(--accent); }
-  .reminder-action.daily { background: rgba(74,127,160,0.1); color: var(--tag-blue); }
+  .reminder-action.review { background: rgba(0,0,0,0.06); color: #444; }
+  .reminder-action.coop { background: rgba(0,0,0,0.06); color: #444; }
+  .reminder-action.backup { background: #111; color: #fff; }
+  .reminder-action.daily { background: rgba(0,0,0,0.08); color: #111; }
 
   /* ===== 列表页通用 ===== */
   .page-head {
@@ -270,18 +270,18 @@
     display: inline-flex; align-items: center; gap: 8px;
     margin-top: 6px; padding: 3px 10px;
     border-radius: 12px; font-size: 11px;
-    background: rgba(74,107,138,0.08); color: var(--accent);
+    background: rgba(0,0,0,0.05); color: #111;
     font-family: Consolas, monospace;
   }
   .task-timer .timer-time { font-weight: 700; letter-spacing: 0.5px; }
-  .task-timer.overtime { background: rgba(199,91,91,0.1); color: #C75B5B; animation: pulse 1.5s infinite; }
-  .task-timer.done { background: rgba(92,159,92,0.1); color: var(--tag-green); }
-  .task-timer.lunch { background: rgba(212,135,60,0.1); color: #D4873C; }
+  .task-timer.overtime { background: #111; color: #fff; animation: pulse 1.5s infinite; }
+  .task-timer.done { background: rgba(0,0,0,0.05); color: #111; }
+  .task-timer.lunch { background: transparent; color: #9A9A9A; border: 1px dashed var(--border); }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
-  .ai-chat-card { background: linear-gradient(135deg, #3d5570, #4A6B8A); border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; color: #fff; }
+  .ai-chat-card { background: #111111; border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; color: #fff; }
   .ai-chat-log { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
   .ai-msg { max-width: 85%; padding: 9px 13px; border-radius: 10px; font-size: 13px; line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
-  .ai-msg.user { align-self: flex-end; background: rgba(255,255,255,0.92); color: #1F2430; border-bottom-right-radius: 3px; }
+  .ai-msg.user { align-self: flex-end; background: rgba(255,255,255,0.92); color: #111; border-bottom-right-radius: 3px; }
   .ai-msg.bot { align-self: flex-start; background: rgba(255,255,255,0.14); color: #fff; border-bottom-left-radius: 3px; }
   .ai-msg.bot.thinking { opacity: 0.7; }
   .ai-chat-input-row { display: flex; gap: 8px; }
@@ -289,6 +289,20 @@
   .ai-chat-input-row input::placeholder { color: #8a94a3; }
   .ai-chip { display: inline-block; padding: 4px 11px; border-radius: 20px; background: rgba(255,255,255,0.14); color: #fff; font-size: 11px; cursor: pointer; border: 1px solid rgba(255,255,255,0.25); transition: background 0.15s; }
   .ai-chip:hover { background: rgba(255,255,255,0.28); }
+  /* ===== 日历 ===== */
+  .cal-day {
+    position: relative; text-align: center; padding: 10px 0;
+    font-size: 13px; color: var(--text); cursor: pointer;
+    border-radius: 8px; border: 1px solid transparent;
+    transition: all 0.12s;
+  }
+  .cal-day:hover { background: var(--bg-soft); }
+  .cal-day.today { border-color: var(--text); font-weight: 600; }
+  .cal-day.active { background: #111; color: #fff; font-weight: 600; }
+  .cal-dot {
+    position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px; border-radius: 50%; background: currentColor;
+  }
   .script-tooltip {
     position: fixed; z-index: 9999;
     background: #fff; border: 1px solid var(--border);
@@ -308,8 +322,8 @@
   .priority-tag {
     font-size: 10px; padding: 2px 8px; border-radius: 8px; font-weight: 500;
   }
-  .p-high { background: rgba(199,91,91,0.12); color: var(--tag-red); }
-  .p-mid { background: rgba(212,135,60,0.12); color: var(--tag-orange); }
+  .p-high { background: #111; color: #fff; }
+  .p-mid { background: rgba(0,0,0,0.07); color: #333; }
   .p-low { background: var(--bg-soft); color: var(--text-soft); }
 
   /* ===== 合作卡 ===== */
@@ -354,7 +368,7 @@
     font-size: 11px; padding: 3px 10px; border-radius: 8px;
     background: var(--bg-soft); color: var(--text-soft);
   }
-  .backup-state.ok { background: rgba(90,138,90,0.12); color: var(--tag-green); }
+  .backup-state.ok { background: #111; color: #fff; }
 
   /* ===== 弹窗 ===== */
   .modal-overlay {
@@ -411,22 +425,23 @@
     </div>
 
     <div class="nav-group">
-      <div class="nav-group-title">内容经营</div>
+      <div class="nav-group-title">核心功能</div>
       <div class="nav-item active" data-page="home"><span class="num">01</span>首页总览</div>
       <div class="nav-item" data-page="topics"><span class="num">02</span>选题库</div>
       <div class="nav-item" data-page="copies"><span class="num">03</span>文案库</div>
       <div class="nav-item" data-page="scripts"><span class="num">04</span>口播文案</div>
-      <div class="nav-item" data-page="reviews"><span class="num">05</span>数据复盘</div>
-      <div class="nav-item" data-page="daily"><span class="num">06</span>工作归档</div>
+      <div class="nav-item" data-page="calendar"><span class="num">05</span>日历备忘</div>
+      <div class="nav-item" data-page="reviews"><span class="num">06</span>数据复盘</div>
+      <div class="nav-item" data-page="daily"><span class="num">07</span>工作归档</div>
     </div>
     <div class="nav-group">
       <div class="nav-group-title">商业经营</div>
-      <div class="nav-item" data-page="cooperations"><span class="num">07</span>合作跟踪</div>
+      <div class="nav-item" data-page="cooperations"><span class="num">08</span>合作跟踪</div>
     </div>
     <div class="nav-group">
       <div class="nav-group-title">战略沉淀</div>
-      <div class="nav-item" data-page="account"><span class="num">08</span>账号定位</div>
-      <div class="nav-item" data-page="backup"><span class="num">09</span>数据备份</div>
+      <div class="nav-item" data-page="account"><span class="num">09</span>账号定位</div>
+      <div class="nav-item" data-page="backup"><span class="num">10</span>数据备份</div>
     </div>
 
     <div class="sidebar-footer">
@@ -450,6 +465,22 @@
 
       <!-- 首页总览 -->
       <div class="page active" id="page-home">
+        <!-- 抖音热点 + 灵感 -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-head">
+            <div>
+              <div class="card-title">抖音热点风向 <span style="font-size:11px;color:var(--text-mute);font-weight:400;margin-left:6px">AI 生成 · 供选题参考</span></div>
+              <div class="card-desc">豆包结合近期抖音热点，给出电火灶内容可蹭的角度。</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="btn" style="padding:5px 12px;font-size:12px" onclick="genInspiration()">⚡ AI 灵感</button>
+              <button class="btn btn-primary" style="padding:5px 12px;font-size:12px" id="hotspotBtn" onclick="genHotspots()">刷新热点</button>
+            </div>
+          </div>
+          <div id="hotspotList" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+          <div id="inspirationBox" style="display:none;margin-top:12px;border-top:1px dashed var(--border);padding-top:12px"></div>
+        </div>
+
         <!-- AI 助手 -->
         <div class="ai-chat-card">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
@@ -466,7 +497,7 @@
           <div class="ai-chat-log" id="aiChatLog"></div>
           <div class="ai-chat-input-row">
             <input type="text" id="aiChatInput" placeholder="输入问题，如：最近电火灶有什么热点选题？" onkeydown="if(event.key==='Enter')askAI()">
-            <button class="btn" style="background:rgba(255,255,255,0.92);color:#3d5570;border:none;font-weight:600;padding:9px 18px" onclick="askAI()">发送</button>
+            <button class="btn" style="background:#fff;color:#111;border:none;font-weight:600;padding:9px 18px" onclick="askAI()">发送</button>
           </div>
         </div>
 
@@ -486,7 +517,7 @@
           </div>
           <div style="display:grid;grid-template-columns:200px 1fr;gap:20px;align-items:start">
             <div>
-              <div id="workCountdown" style="background:linear-gradient(135deg,var(--accent),#3a5a7a);border-radius:10px;padding:14px;color:#fff;margin-bottom:12px"></div>
+              <div id="workCountdown" style="background:var(--text);border-radius:10px;padding:14px;color:#fff;margin-bottom:12px"></div>
               <div id="homeDailyProgress"></div>
             </div>
             <div id="homeDailyList"></div>
@@ -695,6 +726,38 @@
         </div>
       </div>
 
+      <!-- 日历备忘 -->
+      <div class="page" id="page-calendar">
+        <div class="page-head">
+          <div>
+            <div class="page-title">日历备忘</div>
+            <div class="page-desc">点选任意日期记录备忘，圆点标记当天有待办。</div>
+          </div>
+          <button class="btn btn-primary" onclick="saveCalendarMemo()">保存备忘</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+              <button class="icon-btn" onclick="calMove(-1)" style="font-size:15px">‹</button>
+              <div id="calTitle" style="font-size:15px;font-weight:600"></div>
+              <button class="icon-btn" onclick="calMove(1)" style="font-size:15px">›</button>
+            </div>
+            <div id="calGrid"></div>
+          </div>
+          <div class="card">
+            <div class="card-head" style="margin-bottom:10px">
+              <div class="card-title" id="memoDateTitle">选择日期</div>
+              <div style="font-size:11px;color:var(--text-mute)" id="memoSavedHint"></div>
+            </div>
+            <textarea class="form-textarea" id="memoInput" style="min-height:220px" placeholder="记录当天的备忘、灵感、待办…&#10;例如：15:00 拍摄电池烤漆特写；晚上剪第 3 条文案视频"></textarea>
+            <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+              <button class="btn btn-primary" onclick="saveCalendarMemo()">保存</button>
+              <button class="btn btn-ghost" onclick="clearCalendarMemo()">清空</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -785,7 +848,9 @@ const defaultData = {
     model: 'ep-20260910151359-sz5qk',
     systemPrompt: '你是华焰天下电火灶信息流文案写手，为经销商分发到各平台用。\n\n【输出格式】每条文案严格按此格式，不要加序号、不要加解释：\n---\n维度：硬核演示\n封面：无燃气管路/3秒出明火/220V家用电/一插即用\n---\n维度：安全科普\n封面：离锅即断火/智能感应防干烧/童锁防护/主动安全\n---\n\n【硬性要求】\n1. 封面文字3-4行，每行≤8字\n2. 商业化书面语，禁口语化（不用"你看""那一下"等）\n3. 只写功能/参数/卖点，禁场景画面描写\n4. 数字参数必须真实，不得编造\n5. 禁绝对化用语（最/第一/100%/绝对等）\n6. 每条之间用 --- 分隔\n7. 维度只能是：硬核演示、安全科普、生活场景、品牌故事'
   },
-  seq: { topic: 4, review: 3, coop: 3, backup: 4, copy: 31, script: 4, daily: 5 }
+  seq: { topic: 4, review: 3, coop: 3, backup: 4, copy: 31, script: 4, daily: 5 },
+  memos: {},
+  hotspots: { date: '', items: [] }
 };
 
 function load() {
@@ -812,6 +877,8 @@ function load() {
       if (!merged.seq.script) merged.seq.script = defaultData.seq.script;
       if (!merged.seq.daily) merged.seq.daily = defaultData.seq.daily;
     }
+    if (!merged.memos) merged.memos = {};
+    if (!merged.hotspots) merged.hotspots = { date: '', items: [] };
     return merged;
   }
   catch(e) { return JSON.parse(JSON.stringify(defaultData)); }
@@ -825,6 +892,7 @@ const pageMeta = {
   topics: {title:'选题库', sub:'管理你的内容选题，从灵感到发布全流程跟踪。'},
   copies: {title:'文案库', sub:'积累和筛选信息流文案，支持一键生成和指令更新。'},
   scripts: {title:'口播文案', sub:'跟踪口播脚本进度，从待写到完成。'},
+  calendar: {title:'日历备忘', sub:'按日记录备忘与灵感，点日期即可查看和编辑。'},
   reviews: {title:'数据复盘', sub:'记录发布内容的数据表现，总结经验。'},
   daily: {title:'工作归档', sub:'按周/月/年翻阅历史工作记录，回顾本周本月做了什么。'},
   cooperations: {title:'合作跟踪', sub:'商业合作从沟通到回款的全流程管理。'},
@@ -849,6 +917,7 @@ function renderPage(p) {
   else if (p === 'topics') renderTopics();
   else if (p === 'copies') renderCopies();
   else if (p === 'scripts') renderScripts();
+  else if (p === 'calendar') renderCalendar();
   else if (p === 'reviews') renderReviews();
   else if (p === 'daily') renderDaily();
   else if (p === 'cooperations') renderCooperations();
@@ -884,6 +953,7 @@ function calcCompleteness() {
 // ===== 首页 =====
 function renderHome() {
   const s = stats();
+  renderHotspots();
   document.getElementById('statsGrid').innerHTML = `
     <div class="stat-card"><div class="stat-num">${s.todoTopics}</div><div class="stat-label">待创作选题</div></div>
     <div class="stat-card"><div class="stat-num">${s.copyTotal}</div><div class="stat-label">文案库总数</div></div>
@@ -1132,7 +1202,7 @@ async function askAI(presetQuestion) {
   if (!q || presetQuestion === undefined && input.value.trim() === '') return;
   if (!presetQuestion && input) input.value = '';
   const cfg = data.aiConfig;
-  if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) { showToast('请先启动工作台.bat（AI 代理）', '#D4873C'); return; }
+  if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) { showToast('请先启动工作台.bat（AI 代理）', '#555555'); return; }
 
   // 显示用户消息
   aiChatHistory.push({ role: 'user', content: q });
@@ -1168,6 +1238,163 @@ async function askAI(presetQuestion) {
 }
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ===== 日历备忘 =====
+function localDateStr(d) {
+  d = d || new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth(); // 0-11
+let calSelected = localDateStr();
+const WEEK = ['一','二','三','四','五','六','日'];
+function fmtDate(y,m,d) { return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+function renderCalendar() {
+  document.getElementById('calTitle').textContent = `${calYear} 年 ${calMonth+1} 月`;
+  const first = new Date(calYear, calMonth, 1);
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  let offset = (first.getDay() + 6) % 7; // 周一为第一列
+  const todayStr = localDateStr();
+  let html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px">' +
+    WEEK.map(w => `<div style="text-align:center;font-size:11px;color:var(--text-mute);padding:4px 0">${w}</div>`).join('') + '</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">';
+  for (let i = 0; i < offset; i++) html += '<div></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = fmtDate(calYear, calMonth, d);
+    const hasMemo = data.memos[ds] && data.memos[ds].trim();
+    const cls = ds === calSelected ? 'cal-day active' : ds === todayStr ? 'cal-day today' : 'cal-day';
+    html += `<div class="${cls}" onclick="selectCalDay('${ds}')">${d}${hasMemo?'<span class="cal-dot"></span>':''}</div>`;
+  }
+  html += '</div>';
+  document.getElementById('calGrid').innerHTML = html;
+  loadMemoInput();
+}
+function loadMemoInput() {
+  document.getElementById('memoDateTitle').textContent = calSelected + (calSelected === localDateStr() ? ' · 今天' : '');
+  document.getElementById('memoInput').value = data.memos[calSelected] || '';
+  const count = Object.keys(data.memos).filter(k => data.memos[k] && data.memos[k].trim()).length;
+  document.getElementById('memoSavedHint').textContent = count ? `已记录 ${count} 天` : '';
+}
+function selectCalDay(ds) { calSelected = ds; renderCalendar(); }
+function calMove(delta) { calMonth += delta; if (calMonth < 0) { calMonth = 11; calYear--; } if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); }
+function saveCalendarMemo() {
+  const v = document.getElementById('memoInput').value.trim();
+  if (v) data.memos[calSelected] = v; else delete data.memos[calSelected];
+  save();
+  document.getElementById('memoSavedHint').textContent = '✓ 已保存 ' + new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+  renderCalendar();
+  showToast('备忘已保存');
+}
+function clearCalendarMemo() {
+  delete data.memos[calSelected];
+  save();
+  document.getElementById('memoInput').value = '';
+  renderCalendar();
+  showToast('已清空该日备忘');
+}
+
+// ===== 抖音热点 + AI 灵感 =====
+function todayStr() { return localDateStr(); }
+function renderHotspots() {
+  const box = document.getElementById('hotspotList');
+  if (!box) return;
+  const hs = data.hotspots;
+  if (!hs.items.length) {
+    box.innerHTML = '<div class="empty" style="grid-column:1/-1;padding:24px"><div class="empty-icon" style="font-size:26px;margin-bottom:8px">🔥</div>今日热点还没生成，点右上角「刷新热点」让豆包整理</div>';
+    return;
+  }
+  box.innerHTML = hs.items.map((it, i) => `
+    <div class="task-card" style="background:var(--card-hover)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:11px;font-weight:700;background:#111;color:#fff;padding:2px 8px;border-radius:8px">热点 ${i+1}</span>
+        <span style="font-size:10px;color:var(--text-mute)">${hs.date}</span>
+      </div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px">${escHtml(it.topic)}</div>
+      <div style="font-size:11px;color:var(--text-soft);line-height:1.6">${escHtml(it.angle)}</div>
+    </div>`).join('');
+}
+async function genHotspots() {
+  const cfg = data.aiConfig;
+  if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) { showToast('请先启动工作台.bat（AI 代理）', '#555555'); return; }
+  const btn = document.getElementById('hotspotBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '生成中…'; }
+  const box = document.getElementById('hotspotList');
+  box.innerHTML = '<div class="empty" style="grid-column:1/-1;padding:24px">⏳ 豆包正在整理今日热点…</div>';
+  try {
+    const resp = await fetch(`${cfg.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.apiKey}` },
+      body: JSON.stringify({
+        model: cfg.model,
+        messages: [
+          { role: 'system', content: '你是抖音热点选题顾问。基于你对近期抖音内容生态的了解，输出当前热门的内容方向/话题/形式（生活、厨房、家居、安全、科技类优先），并给出电火灶（无明火烹饪电器）账号可蹭的角度。严格输出 JSON 数组，格式：[{"topic":"热点名称","angle":"电火灶蹭法，40字内"}]，共5条，不要输出其他任何内容。' },
+          { role: 'user', content: `今天是${todayStr()}，生成今日抖音热点风向 5 条。` }
+        ],
+        temperature: 0.8,
+        max_tokens: 900,
+        thinking: { type: "disabled" }
+      })
+    });
+    if (!resp.ok) { const err = await resp.json().catch(()=>({})); throw new Error(err.error?.message || `HTTP ${resp.status}`); }
+    const json = await resp.json();
+    let raw = json.choices?.[0]?.message?.content || '[]';
+    raw = raw.replace(/```json|```/g, '').trim();
+    const m = raw.match(/\[[\s\S]*\]/);
+    const items = JSON.parse(m ? m[0] : raw);
+    if (!Array.isArray(items) || !items.length) throw new Error('返回格式异常');
+    data.hotspots = { date: todayStr(), items: items.slice(0, 5) };
+    save();
+    renderHotspots();
+    showToast('✅ 热点已更新');
+  } catch(e) {
+    renderHotspots();
+    showToast('热点生成失败：' + e.message, '#333333');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '刷新热点'; }
+  }
+}
+async function genInspiration() {
+  const cfg = data.aiConfig;
+  if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) { showToast('请先启动工作台.bat（AI 代理）', '#555555'); return; }
+  const box = document.getElementById('inspirationBox');
+  box.style.display = 'block';
+  box.innerHTML = '<div style="font-size:12px;color:var(--text-soft);padding:8px 0">⏳ 灵感构思中…</div>';
+  try {
+    const seed = Math.floor(Math.random() * 10000);
+    const resp = await fetch(`${cfg.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.apiKey}` },
+      body: JSON.stringify({
+        model: cfg.model,
+        messages: [
+          { role: 'system', content: '你是电火灶信息流视频创意顾问。随机生成3个拍摄灵感，每个包含：创意标题（15字内）+ 一句话拍法（30字内）。面向经销商分发场景，禁绝对化用语，参数不得编造。严格输出 JSON 数组：[{"title":"创意标题","how":"一句话拍法"}]，不要输出其他内容。' },
+          { role: 'user', content: `随机种子 ${seed}，生成 3 个和上次不同的灵感。` }
+        ],
+        temperature: 1.0,
+        max_tokens: 500,
+        thinking: { type: "disabled" }
+      })
+    });
+    if (!resp.ok) { const err = await resp.json().catch(()=>({})); throw new Error(err.error?.message || `HTTP ${resp.status}`); }
+    const json = await resp.json();
+    let raw = json.choices?.[0]?.message?.content || '[]';
+    raw = raw.replace(/```json|```/g, '').trim();
+    const m = raw.match(/\[[\s\S]*\]/);
+    const items = JSON.parse(m ? m[0] : raw);
+    if (!Array.isArray(items) || !items.length) throw new Error('返回格式异常');
+    box.innerHTML = `<div style="font-size:12px;font-weight:600;margin-bottom:8px">⚡ 今日灵感 · 点右侧「AI 灵感」随时换一批</div>` +
+      items.map(it => `
+      <div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border-soft)">
+        <span style="font-size:11px;font-weight:700;color:var(--text);background:var(--bg-soft);padding:2px 8px;border-radius:8px;flex-shrink:0">灵感</span>
+        <div>
+          <div style="font-size:13px;font-weight:600">${escHtml(it.title)}</div>
+          <div style="font-size:11px;color:var(--text-soft);margin-top:2px">${escHtml(it.how)}</div>
+        </div>
+      </div>`).join('');
+  } catch(e) {
+    box.innerHTML = `<div style="font-size:12px;color:#333;padding:8px 0">⚠️ 灵感生成失败：${escHtml(e.message)}</div>`;
+  }
 }
 
 function statusClass(s) {
@@ -1238,7 +1465,7 @@ async function genTopics() {
   const btn = document.getElementById('genTopicBtn');
   const status = document.getElementById('topicGenStatus');
   if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) {
-    showToast('请先在文案库点 ⚙ 配置豆包 API Key', '#D4873C');
+    showToast('请先在文案库点 ⚙ 配置豆包 API Key', '#555555');
     return;
   }
   const count = +document.getElementById('topicCount').value;
@@ -1287,7 +1514,7 @@ async function genTopics() {
     showToast(`AI 已生成 ${added} 条选题`);
   } catch(e) {
     status.textContent = '❌ 失败';
-    showToast('生成失败：' + e.message, '#C75B5B');
+    showToast('生成失败：' + e.message, '#333333');
   } finally {
     btn.disabled = false; btn.style.opacity = '1';
     setTimeout(() => { status.textContent = ''; }, 5000);
@@ -1348,7 +1575,7 @@ async function genCopies() {
     const picked = shuffled.slice(0, Math.min(count, pool.length));
     picked.forEach(c => { if (!data.copies.find(x => x.cover === c.cover)) data.copies.unshift({...c, id:'W'+data.seq.copy++, favorite:false}); });
     save(); renderCopies();
-    showToast(`已从预置库取出 ${picked.length} 条（配置 API 后可 AI 生成）`, '#D4873C');
+    showToast(`已从预置库取出 ${picked.length} 条（配置 API 后可 AI 生成）`, '#555555');
     return;
   }
 
@@ -1424,8 +1651,8 @@ async function genCopies() {
     else if (e.message.includes('Failed to fetch')) msg = '网络错误或代理服务器未启动，请双击"启动工作台.bat"';
     else if (e.message.includes('CORS')) msg = '跨域错误，请通过 http://localhost:9688 访问';
     status.textContent = '❌ ' + msg;
-    status.style.color = '#C75B5B';
-    showToast('生成失败：' + msg, '#C75B5B');
+    status.style.color = '#333333';
+    showToast('生成失败：' + msg, '#333333');
     console.error('生成失败详情：', e);
   } finally {
     btn.disabled = false; btn.style.opacity = '1';
@@ -1508,20 +1735,20 @@ function parseAiCopies(text, defaultDim) {
 }
 function copyCmd() {
   const cmd = document.getElementById('copyCmd').value.trim();
-  if (!cmd) { showToast('请输入指令', '#C75B5B'); return; }
+  if (!cmd) { showToast('请输入指令', '#333333'); return; }
   if (navigator.clipboard) {
     navigator.clipboard.writeText(cmd).then(() => showToast('指令已复制，粘贴到AI对话框发送'));
   } else {
     const ta = document.createElement('textarea');
     ta.value = cmd; document.body.appendChild(ta); ta.select();
-    try { document.execCommand('copy'); showToast('指令已复制'); } catch(e) { showToast('复制失败', '#C75B5B'); }
+    try { document.execCommand('copy'); showToast('指令已复制'); } catch(e) { showToast('复制失败', '#333333'); }
     document.body.removeChild(ta);
   }
 }
 function copyAll() {
   const text = data.copies.map(c => `【${c.dim}】${c.id}\n${c.cover}`).join('\n\n---\n\n');
   if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => showToast(`已复制 ${data.copies.length} 条文案`));
-  else showToast('复制失败', '#C75B5B');
+  else showToast('复制失败', '#333333');
 }
 function openApiConfig() {
   const c = data.aiConfig;
@@ -1568,7 +1795,7 @@ async function testApi() {
   const baseUrl = document.getElementById('f_baseUrl').value.trim();
   const apiKey = document.getElementById('f_apiKey').value.trim();
   const model = document.getElementById('f_model').value.trim();
-  if (!baseUrl || !apiKey || !model) { showToast('请先填完三项', '#C75B5B'); return; }
+  if (!baseUrl || !apiKey || !model) { showToast('请先填完三项', '#333333'); return; }
   showToast('测试中…');
   try {
     const resp = await fetch(`${baseUrl.replace(/\/$/, '')}/chat/completions`, {
@@ -1577,16 +1804,16 @@ async function testApi() {
       body: JSON.stringify({ model, messages: [{ role: 'user', content: '回复ok' }], max_tokens: 5 })
     });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    showToast('✅ 连接成功', '#5A8A5A');
+    showToast('✅ 连接成功', '#111111');
   } catch(e) {
-    showToast('❌ 连接失败：' + e.message, '#C75B5B');
+    showToast('❌ 连接失败：' + e.message, '#333333');
   }
 }
 function copyCover(id) {
   const c = data.copies.find(x => x.id === id);
   if (!c) return;
   if (navigator.clipboard) navigator.clipboard.writeText(c.cover).then(() => showToast('封面文字已复制'));
-  else showToast('复制失败', '#C75B5B');
+  else showToast('复制失败', '#333333');
 }
 function toggleFav(id) {
   const c = data.copies.find(x => x.id === id);
@@ -1627,7 +1854,7 @@ function openCopyModal(editId) {
 }
 function saveCopy(id) {
   const cover = document.getElementById('f_cover').value.trim();
-  if (!cover) { showToast('请输入封面文字', '#C75B5B'); return; }
+  if (!cover) { showToast('请输入封面文字', '#333333'); return; }
   const obj = {
     dim: document.getElementById('f_dim').value,
     cover, favorite: false
@@ -1729,7 +1956,7 @@ function openScriptModal(editId) {
 }
 function saveScript(id) {
   const title = document.getElementById('f_title').value.trim();
-  if (!title) { showToast('请输入标题', '#C75B5B'); return; }
+  if (!title) { showToast('请输入标题', '#333333'); return; }
   const obj = {
     title, topic: document.getElementById('f_topic').value,
     duration: document.getElementById('f_dur').value,
@@ -1747,7 +1974,7 @@ async function genScript() {
   const btn = document.getElementById('genScriptBtn');
   const status = document.getElementById('scriptGenStatus');
   if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) {
-    showToast('请先在文案库点 ⚙ 配置豆包 API Key', '#D4873C');
+    showToast('请先在文案库点 ⚙ 配置豆包 API Key', '#555555');
     return;
   }
   const cmd = document.getElementById('scriptCmd').value.trim();
@@ -1792,7 +2019,7 @@ async function genScript() {
     showToast('AI 已生成口播稿');
   } catch(e) {
     status.textContent = '❌ 失败';
-    showToast('生成失败：' + e.message, '#C75B5B');
+    showToast('生成失败：' + e.message, '#333333');
   } finally {
     btn.disabled = false; btn.style.opacity = '1';
     setTimeout(() => { status.textContent = ''; }, 5000);
@@ -1908,7 +2135,7 @@ function openDailyModal(editId) {
 }
 function saveDaily(id) {
   const title = document.getElementById('f_title').value.trim();
-  if (!title) { showToast('请输入任务内容', '#C75B5B'); return; }
+  if (!title) { showToast('请输入任务内容', '#333333'); return; }
   const obj = {
     title,
     date: document.getElementById('f_date').value,
@@ -2114,7 +2341,7 @@ function openTopicModal(editId) {
 }
 function saveTopic(id) {
   const title = document.getElementById('f_title').value.trim();
-  if (!title) { showToast('请输入标题', '#C75B5B'); return; }
+  if (!title) { showToast('请输入标题', '#333333'); return; }
   const obj = {
     title, desc: document.getElementById('f_desc').value.trim(),
     tags: document.getElementById('f_tags').value.split(/[,，]/).map(s=>s.trim()).filter(Boolean),
@@ -2171,7 +2398,7 @@ function openReviewModal(editId) {
 }
 function saveReview(id) {
   const title = document.getElementById('f_title').value.trim();
-  if (!title) { showToast('请输入内容标题', '#C75B5B'); return; }
+  if (!title) { showToast('请输入内容标题', '#333333'); return; }
   const obj = {
     topicTitle: title,
     platform: document.getElementById('f_platform').value,
@@ -2229,7 +2456,7 @@ function openCoopModal(editId) {
 }
 function saveCoop(id) {
   const title = document.getElementById('f_title').value.trim();
-  if (!title) { showToast('请输入合作标题', '#C75B5B'); return; }
+  if (!title) { showToast('请输入合作标题', '#333333'); return; }
   const obj = {
     title, brand: document.getElementById('f_brand').value.trim(),
     amount: +document.getElementById('f_amount').value,
@@ -2294,7 +2521,7 @@ function openBackupModal() {
 }
 function saveBackup() {
   const name = document.getElementById('f_name').value.trim();
-  if (!name) { showToast('请输入归档名称', '#C75B5B'); return; }
+  if (!name) { showToast('请输入归档名称', '#333333'); return; }
   data.backups.unshift({
     id: 'B' + data.seq.backup++, name,
     type: document.getElementById('f_type').value,
@@ -2323,7 +2550,7 @@ function importData() {
       try {
         data = JSON.parse(ev.target.result);
         save(); renderPage(currentPage()); showToast('数据已导入');
-      } catch(err) { showToast('文件格式错误', '#C75B5B'); }
+      } catch(err) { showToast('文件格式错误', '#333333'); }
     };
     reader.readAsText(file);
   };
