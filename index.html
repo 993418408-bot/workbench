@@ -1,0 +1,2372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>自媒体工作台</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #F2F4F7;
+    --bg-soft: #EBEEF3;
+    --card: #FFFFFF;
+    --card-hover: #F5F7FA;
+    --border: #E2E6EC;
+    --border-soft: #EAECEF;
+    --text: #1F2430;
+    --text-soft: #6B7280;
+    --text-mute: #9CA3AF;
+    --accent: #4A6B8A;
+    --accent-light: #6B8BAE;
+    --accent-bg: rgba(74,107,138,0.1);
+    --tag-red: #C75B5B;
+    --tag-orange: #D4873C;
+    --tag-green: #5A8A5A;
+    --tag-blue: #4A7FA0;
+    --tag-purple: #8B6FAA;
+    --shadow: 0 2px 8px rgba(31,36,48,0.06);
+  }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    height: 100vh;
+    overflow: hidden;
+    font-size: 14px;
+  }
+  .app { display: flex; height: 100vh; }
+
+  /* ===== 侧边栏 ===== */
+  .sidebar {
+    width: 220px;
+    background: var(--bg-soft);
+    border-right: 1px solid var(--border-soft);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    padding: 16px 0;
+  }
+  .sidebar-brand {
+    padding: 0 20px 16px;
+    border-bottom: 1px solid var(--border-soft);
+    margin-bottom: 8px;
+  }
+  .brand-name { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: 0.5px; }
+  .brand-sub { font-size: 10px; color: var(--text-mute); margin-top: 2px; letter-spacing: 1px; }
+  .nav-group { margin-top: 12px; }
+  .nav-group-title {
+    padding: 4px 20px;
+    font-size: 10px;
+    color: var(--text-mute);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 20px;
+    margin: 1px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--text-soft);
+    font-size: 13px;
+    transition: all 0.15s;
+  }
+  .nav-item:hover { background: var(--card); color: var(--text); }
+  .nav-item.active { background: var(--accent); color: #fff; font-weight: 500; }
+  .nav-item .num {
+    font-size: 11px; font-weight: 600; opacity: 0.6;
+    width: 18px;
+  }
+  .nav-item .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor; opacity: 0.5;
+  }
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border-soft);
+  }
+  .completeness-label { font-size: 11px; color: var(--text-soft); margin-bottom: 6px; }
+  .completeness-bar {
+    height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;
+  }
+  .completeness-fill {
+    height: 100%; background: var(--accent); border-radius: 3px;
+    transition: width 0.4s;
+  }
+  .completeness-text { font-size: 10px; color: var(--text-mute); margin-top: 6px; line-height: 1.5; }
+
+  /* ===== 主区 ===== */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+  .topbar {
+    height: 60px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border-soft);
+    display: flex; align-items: center;
+    padding: 0 28px;
+    flex-shrink: 0;
+    gap: 16px;
+  }
+  .topbar-title { font-size: 18px; font-weight: 700; color: var(--text); }
+  .topbar-sub { font-size: 12px; color: var(--text-soft); margin-top: 2px; }
+  .topbar-actions { margin-left: auto; display: flex; gap: 8px; }
+  .btn {
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    transition: all 0.15s;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .btn:hover { background: var(--card-hover); }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover { background: var(--accent-light); }
+  .btn-ghost { background: transparent; border-color: transparent; color: var(--text-soft); }
+  .content { flex: 1; overflow-y: auto; padding: 24px 28px; }
+  .page { display: none; }
+  .page.active { display: block; animation: fadeIn 0.2s; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ===== 统计卡 ===== */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+  }
+  .stat-num { font-size: 26px; font-weight: 700; color: var(--text); line-height: 1.1; }
+  .stat-num .unit { font-size: 14px; color: var(--text-soft); font-weight: 500; margin-left: 2px; }
+  .stat-label { font-size: 12px; color: var(--text-soft); margin-top: 6px; }
+
+  /* ===== 两栏布局 ===== */
+  .two-col { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: var(--shadow);
+  }
+  .card-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .card-title { font-size: 15px; font-weight: 600; color: var(--text); }
+  .card-desc { font-size: 11px; color: var(--text-soft); margin-top: 2px; }
+  .card-action { font-size: 12px; color: var(--accent); cursor: pointer; }
+
+  /* ===== 任务卡（今日重点） ===== */
+  .task-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .task-card {
+    background: var(--card-hover);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .task-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .task-id { font-size: 11px; color: var(--accent); font-weight: 600; font-family: Consolas, monospace; }
+  .task-status {
+    font-size: 10px; padding: 2px 8px; border-radius: 10px;
+    font-weight: 500;
+  }
+  .status-todo { background: rgba(212,135,60,0.15); color: var(--tag-orange); }
+  .status-review { background: rgba(199,91,91,0.12); color: var(--tag-red); }
+  .status-doing { background: rgba(74,127,160,0.15); color: var(--tag-blue); }
+  .status-done { background: rgba(90,138,90,0.15); color: var(--tag-green); }
+  .task-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .task-desc { font-size: 12px; color: var(--text-soft); line-height: 1.6; margin-bottom: 10px; }
+  .task-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .task-tag {
+    font-size: 10px; padding: 2px 8px; border-radius: 8px;
+    background: var(--bg-soft); color: var(--text-soft);
+  }
+  .task-tag.hot { background: var(--accent-bg); color: var(--accent); font-weight: 500; }
+  .tag.dim-hardcore { background: rgba(74,107,138,0.12); color: var(--accent); }
+  .tag.dim-safety { background: rgba(90,138,90,0.12); color: var(--tag-green); }
+  .tag.dim-scene { background: rgba(74,127,160,0.12); color: var(--tag-blue); }
+  .tag.dim-brand { background: rgba(212,135,60,0.12); color: var(--tag-orange); }
+  .task-actions { display: flex; gap: 6px; }
+  .task-action-btn {
+    font-size: 11px; padding: 4px 10px; border-radius: 6px;
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--text-soft); cursor: pointer;
+  }
+  .task-action-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .task-meta { display: flex; gap: 12px; font-size: 11px; color: var(--text-soft); margin-bottom: 8px; }
+
+  /* ===== 提醒项 ===== */
+  .reminder-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .reminder-item:last-child { border-bottom: none; }
+  .reminder-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+  .reminder-main { flex: 1; }
+  .reminder-title { font-size: 13px; font-weight: 500; color: var(--text); }
+  .reminder-desc { font-size: 11px; color: var(--text-soft); margin-top: 2px; }
+  .reminder-action {
+    font-size: 10px; padding: 3px 10px; border-radius: 8px;
+    background: var(--bg-soft); color: var(--text-soft);
+    cursor: pointer; flex-shrink: 0;
+  }
+  .reminder-action.review { background: rgba(199,91,91,0.1); color: var(--tag-red); }
+  .reminder-action.coop { background: rgba(212,135,60,0.1); color: var(--tag-orange); }
+  .reminder-action.backup { background: var(--accent-bg); color: var(--accent); }
+  .reminder-action.daily { background: rgba(74,127,160,0.1); color: var(--tag-blue); }
+
+  /* ===== 列表页通用 ===== */
+  .page-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .page-title { font-size: 20px; font-weight: 700; }
+  .page-desc { font-size: 12px; color: var(--text-soft); margin-top: 3px; }
+  .toolbar {
+    display: flex; gap: 8px; margin-bottom: 16px; align-items: center;
+    flex-wrap: wrap;
+  }
+  .filter-chip {
+    padding: 5px 12px; border-radius: 16px;
+    background: var(--card); border: 1px solid var(--border);
+    font-size: 12px; color: var(--text-soft); cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .search-input {
+    margin-left: auto;
+    padding: 6px 12px; border-radius: 16px;
+    border: 1px solid var(--border); background: var(--card);
+    font-size: 12px; color: var(--text); outline: none; width: 200px;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .list-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .list-table th {
+    text-align: left; padding: 10px 12px;
+    font-size: 11px; color: var(--text-mute); font-weight: 500;
+    border-bottom: 1px solid var(--border-soft);
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .list-table td {
+    padding: 12px; border-bottom: 1px solid var(--border-soft);
+    vertical-align: middle;
+  }
+  .list-table tr:hover td { background: var(--card-hover); }
+  .cell-preview { font-size: 11px; color: var(--text-soft); font-weight: 400; margin-top: 3px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .script-row { position: relative; cursor: default; }
+  .task-timer {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-top: 6px; padding: 3px 10px;
+    border-radius: 12px; font-size: 11px;
+    background: rgba(74,107,138,0.08); color: var(--accent);
+    font-family: Consolas, monospace;
+  }
+  .task-timer .timer-time { font-weight: 700; letter-spacing: 0.5px; }
+  .task-timer.overtime { background: rgba(199,91,91,0.1); color: #C75B5B; animation: pulse 1.5s infinite; }
+  .task-timer.done { background: rgba(92,159,92,0.1); color: var(--tag-green); }
+  .task-timer.lunch { background: rgba(212,135,60,0.1); color: #D4873C; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+  .ai-chat-card { background: linear-gradient(135deg, #3d5570, #4A6B8A); border-radius: 12px; padding: 16px 18px; margin-bottom: 16px; color: #fff; }
+  .ai-chat-log { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
+  .ai-msg { max-width: 85%; padding: 9px 13px; border-radius: 10px; font-size: 13px; line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
+  .ai-msg.user { align-self: flex-end; background: rgba(255,255,255,0.92); color: #1F2430; border-bottom-right-radius: 3px; }
+  .ai-msg.bot { align-self: flex-start; background: rgba(255,255,255,0.14); color: #fff; border-bottom-left-radius: 3px; }
+  .ai-msg.bot.thinking { opacity: 0.7; }
+  .ai-chat-input-row { display: flex; gap: 8px; }
+  .ai-chat-input-row input { flex: 1; border: none; border-radius: 8px; padding: 9px 13px; font-size: 13px; outline: none; background: rgba(255,255,255,0.92); color: #1F2430; }
+  .ai-chat-input-row input::placeholder { color: #8a94a3; }
+  .ai-chip { display: inline-block; padding: 4px 11px; border-radius: 20px; background: rgba(255,255,255,0.14); color: #fff; font-size: 11px; cursor: pointer; border: 1px solid rgba(255,255,255,0.25); transition: background 0.15s; }
+  .ai-chip:hover { background: rgba(255,255,255,0.28); }
+  .script-tooltip {
+    position: fixed; z-index: 9999;
+    background: #fff; border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    max-width: 420px; max-height: 70vh; overflow-y: auto;
+    pointer-events: none; opacity: 0; transition: opacity 0.15s;
+  }
+  .script-tooltip.show { opacity: 1; }
+  .row-actions { display: flex; gap: 6px; }
+  .icon-btn {
+    width: 28px; height: 28px; border-radius: 6px;
+    border: none; background: transparent; color: var(--text-soft);
+    cursor: pointer; font-size: 13px;
+  }
+  .icon-btn:hover { background: var(--bg-soft); color: var(--accent); }
+  .priority-tag {
+    font-size: 10px; padding: 2px 8px; border-radius: 8px; font-weight: 500;
+  }
+  .p-high { background: rgba(199,91,91,0.12); color: var(--tag-red); }
+  .p-mid { background: rgba(212,135,60,0.12); color: var(--tag-orange); }
+  .p-low { background: var(--bg-soft); color: var(--text-soft); }
+
+  /* ===== 合作卡 ===== */
+  .coop-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .coop-card {
+    background: var(--card); border: 1px solid var(--border-soft);
+    border-radius: 12px; padding: 16px; box-shadow: var(--shadow);
+  }
+  .coop-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+  .coop-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .coop-amount { font-size: 18px; font-weight: 700; color: var(--accent); margin: 8px 0; }
+  .coop-amount::before { content: '¥'; font-size: 12px; margin-right: 2px; }
+  .coop-meta { font-size: 11px; color: var(--text-soft); display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+  .coop-actions { display: flex; gap: 6px; border-top: 1px solid var(--border-soft); padding-top: 12px; }
+
+  /* ===== 账号定位 ===== */
+  .account-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .info-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-soft); font-size: 13px; }
+  .info-item:last-child { border-bottom: none; }
+  .info-label { color: var(--text-soft); }
+  .info-value { color: var(--text); font-weight: 500; }
+  .keyword-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .keyword-chip {
+    padding: 4px 12px; border-radius: 12px;
+    background: var(--accent-bg); color: var(--accent);
+    font-size: 12px;
+  }
+  .platform-list { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .platform-chip {
+    padding: 6px 14px; border-radius: 8px;
+    background: var(--card); border: 1px solid var(--border);
+    font-size: 12px; color: var(--text-soft); cursor: pointer;
+  }
+  .platform-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* ===== 数据备份 ===== */
+  .backup-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .backup-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-soft); }
+  .backup-name { font-size: 13px; color: var(--text); }
+  .backup-date { font-size: 11px; color: var(--text-mute); }
+  .backup-state {
+    font-size: 11px; padding: 3px 10px; border-radius: 8px;
+    background: var(--bg-soft); color: var(--text-soft);
+  }
+  .backup-state.ok { background: rgba(90,138,90,0.12); color: var(--tag-green); }
+
+  /* ===== 弹窗 ===== */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(31,36,48,0.4);
+    display: none; align-items: center; justify-content: center; z-index: 100;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--card); border-radius: 14px; padding: 24px;
+    width: 480px; max-width: 90vw; max-height: 85vh; overflow-y: auto;
+    box-shadow: 0 12px 40px rgba(31,36,48,0.15);
+  }
+  .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 18px; }
+  .form-group { margin-bottom: 14px; }
+  .form-label { font-size: 12px; color: var(--text-soft); margin-bottom: 6px; display: block; }
+  .form-input, .form-select, .form-textarea {
+    width: 100%; padding: 8px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg);
+    font-size: 13px; color: var(--text); outline: none;
+    font-family: inherit;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent); }
+  .form-textarea { resize: vertical; min-height: 70px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+  /* ===== Toast ===== */
+  .toast {
+    position: fixed; bottom: 30px; left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--text); color: #fff;
+    padding: 10px 20px; border-radius: 8px;
+    font-size: 13px; transition: transform 0.3s; z-index: 200;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-mute); }
+
+  .empty { text-align: center; padding: 50px 20px; color: var(--text-mute); font-size: 13px; }
+  .empty-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.4; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 侧边栏 -->
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-name">Alon STUDIO</div>
+      <div class="brand-sub">自媒体工作台</div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-title">内容经营</div>
+      <div class="nav-item active" data-page="home"><span class="num">01</span>首页总览</div>
+      <div class="nav-item" data-page="topics"><span class="num">02</span>选题库</div>
+      <div class="nav-item" data-page="copies"><span class="num">03</span>文案库</div>
+      <div class="nav-item" data-page="scripts"><span class="num">04</span>口播文案</div>
+      <div class="nav-item" data-page="reviews"><span class="num">05</span>数据复盘</div>
+      <div class="nav-item" data-page="daily"><span class="num">06</span>工作归档</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-title">商业经营</div>
+      <div class="nav-item" data-page="cooperations"><span class="num">07</span>合作跟踪</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-title">战略沉淀</div>
+      <div class="nav-item" data-page="account"><span class="num">08</span>账号定位</div>
+      <div class="nav-item" data-page="backup"><span class="num">09</span>数据备份</div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="completeness-label">本月资料完整度</div>
+      <div class="completeness-bar"><div class="completeness-fill" id="sideCompleteness" style="width:0%"></div></div>
+      <div class="completeness-text" id="sideCompText">计算中…</div>
+    </div>
+  </div>
+
+  <!-- 主区 -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title" id="topbarTitle">首页总览</div>
+        <div class="topbar-sub" id="topbarSub">每天先看这里，快速处理选题、数据、合作和备份。</div>
+      </div>
+      <div class="topbar-actions" id="topbarActions"></div>
+    </div>
+
+    <div class="content">
+
+      <!-- 首页总览 -->
+      <div class="page active" id="page-home">
+        <!-- AI 助手 -->
+        <div class="ai-chat-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <div>
+              <div style="font-size:15px;font-weight:700">🤖 AI 助手 · 豆包</div>
+              <div style="font-size:11px;opacity:0.75;margin-top:3px">查询产品热点、选题建议、文案灵感，直接提问</div>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span class="ai-chip" onclick="askAI('最近电火灶行业有什么热点话题？给我3个可以蹭的选题方向')">🔥 近期产品热点</span>
+              <span class="ai-chip" onclick="askAI('电火灶信息流视频，最近哪类内容在抖音/小红书表现好？给3个拍摄建议')">📈 爆款内容方向</span>
+              <span class="ai-chip" onclick="askAI('针对电火灶「无明火烹饪」卖点，写3个能引起好奇的开场钩子')">💡 选题灵感</span>
+            </div>
+          </div>
+          <div class="ai-chat-log" id="aiChatLog"></div>
+          <div class="ai-chat-input-row">
+            <input type="text" id="aiChatInput" placeholder="输入问题，如：最近电火灶有什么热点选题？" onkeydown="if(event.key==='Enter')askAI()">
+            <button class="btn" style="background:rgba(255,255,255,0.92);color:#3d5570;border:none;font-weight:600;padding:9px 18px" onclick="askAI()">发送</button>
+          </div>
+        </div>
+
+        <div class="stats-grid" id="statsGrid"></div>
+
+        <!-- 今日工作打卡 -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-head">
+            <div>
+              <div class="card-title">今日工作 <span id="homeTodayDate" style="font-size:12px;color:var(--text-soft);font-weight:400;margin-left:8px"></span></div>
+              <div class="card-desc">勾选打卡，实时记录今日完成情况。</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="date" class="form-input" id="homeDailyDate" style="width:auto;padding:5px 10px;font-size:12px" onchange="renderHomeDaily()">
+              <button class="btn btn-primary" style="padding:5px 12px;font-size:12px" onclick="openDailyModal()">+ 新增</button>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:200px 1fr;gap:20px;align-items:start">
+            <div>
+              <div id="workCountdown" style="background:linear-gradient(135deg,var(--accent),#3a5a7a);border-radius:10px;padding:14px;color:#fff;margin-bottom:12px"></div>
+              <div id="homeDailyProgress"></div>
+            </div>
+            <div id="homeDailyList"></div>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div>
+            <div class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">今日重点</div>
+                  <div class="card-desc">优先处理快到期、待发布、待回款事项。</div>
+                </div>
+                <div class="card-action" onclick="document.querySelector('.nav-item[data-page=&quot;daily&quot;]').click()">查看归档 →</div>
+              </div>
+              <div class="task-grid" id="todayTasks"></div>
+            </div>
+          </div>
+          <div>
+            <div class="card">
+              <div class="card-head">
+                <div class="card-title">最近提醒</div>
+              </div>
+              <div id="reminderList"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 选题库 -->
+      <div class="page" id="page-topics">
+        <div class="page-head">
+          <div>
+            <div class="page-title">选题库</div>
+            <div class="page-desc">管理你的内容选题，从灵感到发布全流程跟踪。</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn" id="genTopicBtn" onclick="genTopics()">⚡ AI 生成选题</button>
+            <button class="btn btn-primary" onclick="openTopicModal()">+ 新增选题</button>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:flex;gap:8px;align-items:center">
+            <input class="search-input" id="topicCmd" placeholder="输入选题要求，如：生成10条电火灶安全科普方向的选题" style="flex:1;width:auto" value="生成电火灶信息流选题，覆盖4个维度，每个选题包含标题和一句话说明">
+            <select class="form-select" id="topicCount" style="width:auto;padding:6px 10px">
+              <option value="5">5 条</option>
+              <option value="10" selected>10 条</option>
+              <option value="20">20 条</option>
+            </select>
+            <span id="topicGenStatus" style="font-size:11px;color:var(--text-soft)"></span>
+          </div>
+        </div>
+        <div class="toolbar" id="topicToolbar"></div>
+        <div class="card" style="padding:0">
+          <table class="list-table" id="topicTable"></table>
+        </div>
+      </div>
+
+      <!-- 文案库 -->
+      <div class="page" id="page-copies">
+        <div class="page-head">
+          <div>
+            <div class="page-title">文案库</div>
+            <div class="page-desc">积累和筛选信息流文案。点击"生成文案"批量产出，也可输入指令让 AI 更新。</div>
+          </div>
+          <button class="btn btn-primary" onclick="openCopyModal()">+ 手动新增</button>
+        </div>
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+            <span style="font-size:12px;color:var(--text-soft)">维度</span>
+            <select class="form-select" id="genDim" style="width:auto;padding:6px 10px">
+              <option value="all">全部维度</option>
+              <option value="硬核演示">硬核演示</option>
+              <option value="安全科普">安全科普</option>
+              <option value="生活场景">生活场景</option>
+              <option value="品牌故事">品牌故事</option>
+            </select>
+            <span style="font-size:12px;color:var(--text-soft)">数量</span>
+            <select class="form-select" id="genCount" style="width:auto;padding:6px 10px">
+              <option value="10">10 条</option>
+              <option value="20">20 条</option>
+              <option value="30" selected>30 条</option>
+            </select>
+            <button class="btn btn-primary" id="genBtn" onclick="genCopies()">⚡ AI 生成文案</button>
+            <button class="btn" onclick="openApiConfig()" title="API配置">⚙</button>
+            <span id="genStatus" style="font-size:11px;color:var(--text-soft)"></span>
+            <span id="cfgStatus" style="font-size:11px;color:var(--tag-green)"></span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input class="search-input" id="copyCmd" placeholder="输入指令，如：生成30条安全科普维度、侧重防干烧功能的文案" style="flex:1;width:auto" value="生成电火灶信息流文案，封面文字3-4行，商业化书面语，突出功能参数卖点">
+            <button class="btn" onclick="copyCmd()">复制指令</button>
+          </div>
+        </div>
+        <div class="toolbar" id="copyToolbar"></div>
+        <div id="copyList"></div>
+      </div>
+
+      <!-- 口播文案 -->
+      <div class="page" id="page-scripts">
+        <div class="page-head">
+          <div>
+            <div class="page-title">口播文案</div>
+            <div class="page-desc">跟踪口播脚本进度，从待写到完成全流程管理。</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn" id="genScriptBtn" onclick="genScript()">⚡ AI 生成口播</button>
+            <button class="btn btn-primary" onclick="openScriptModal()">+ 新增口播</button>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:flex;gap:8px;align-items:center">
+            <input class="search-input" id="scriptCmd" placeholder="输入口播要求，如：生成一条电火灶离锅断火功能的45秒口播稿" style="flex:1;width:auto" value="生成一条电火灶信息流口播稿，45秒左右，口语化，突出功能卖点">
+            <select class="form-select" id="scriptDim" style="width:auto;padding:6px 10px">
+              <option value="硬核演示">硬核演示</option>
+              <option value="安全科普">安全科普</option>
+              <option value="生活场景">生活场景</option>
+              <option value="品牌故事">品牌故事</option>
+            </select>
+            <span id="scriptGenStatus" style="font-size:11px;color:var(--text-soft)"></span>
+          </div>
+        </div>
+        <div class="toolbar" id="scriptToolbar"></div>
+        <div class="card" style="padding:0">
+          <table class="list-table" id="scriptTable"></table>
+        </div>
+      </div>
+
+      <!-- 工作归档 -->
+      <div class="page" id="page-daily">
+        <div class="page-head">
+          <div>
+            <div class="page-title">工作归档</div>
+            <div class="page-desc">按周/月/年翻阅历史工作记录，回顾本周本月做了什么。</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <div class="view-toggle" id="dailyViewToggle">
+              <button class="on" onclick="setDailyView('week')">本周</button>
+              <button onclick="setDailyView('month')">本月</button>
+              <button onclick="setDailyView('all')">全部</button>
+            </div>
+            <button class="btn btn-primary" onclick="openDailyModal()">+ 新增任务</button>
+          </div>
+        </div>
+        <div id="dailyArchive"></div>
+      </div>
+
+      <!-- 数据复盘 -->
+      <div class="page" id="page-reviews">
+        <div class="page-head">
+          <div>
+            <div class="page-title">数据复盘</div>
+            <div class="page-desc">记录发布内容的数据表现，总结经验。</div>
+          </div>
+          <button class="btn btn-primary" onclick="openReviewModal()">+ 新增复盘</button>
+        </div>
+        <div class="card" style="padding:0">
+          <table class="list-table" id="reviewTable"></table>
+        </div>
+      </div>
+
+      <!-- 合作跟踪 -->
+      <div class="page" id="page-cooperations">
+        <div class="page-head">
+          <div>
+            <div class="page-title">合作跟踪</div>
+            <div class="page-desc">商业合作从沟通到回款的全流程管理。</div>
+          </div>
+          <button class="btn btn-primary" onclick="openCoopModal()">+ 新增合作</button>
+        </div>
+        <div class="toolbar" id="coopToolbar"></div>
+        <div class="coop-grid" id="coopGrid"></div>
+      </div>
+
+      <!-- 账号定位 -->
+      <div class="page" id="page-account">
+        <div class="page-head">
+          <div>
+            <div class="page-title">账号定位</div>
+            <div class="page-desc">明确你的人设、内容方向和目标受众。</div>
+          </div>
+          <button class="btn" onclick="editAccount()">编辑定位</button>
+        </div>
+        <div class="account-grid" id="accountGrid"></div>
+      </div>
+
+      <!-- 数据备份 -->
+      <div class="page" id="page-backup">
+        <div class="page-head">
+          <div>
+            <div class="page-title">数据备份</div>
+            <div class="page-desc">资料归档与完整度跟踪，避免素材丢失。</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn" onclick="exportData()">导出数据</button>
+            <button class="btn" onclick="importData()">导入数据</button>
+            <button class="btn btn-primary" onclick="openBackupModal()">+ 新增归档</button>
+          </div>
+        </div>
+        <div class="backup-stats" id="backupStats"></div>
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">归档清单</div>
+          </div>
+          <div id="backupList"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- 通用弹窗 -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalBody"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== 数据模型 =====
+const KEY = 'mediaWorkbench';
+const defaultData = {
+  topics: [
+    {id:'T01', title:'自媒体工作台怎么搭', desc:'适合做成小红书图文和短视频双版本，突出"从混乱到清晰"。', tags:['小红书','工具效率'], platform:'小红书', priority:'高', status:'待拍', createdAt:'2026-09-08'},
+    {id:'T02', title:'我的一周内容排期分享', desc:'干货向，展示真实排期表，吸引同行关注。', tags:['干货','排期'], platform:'小红书', priority:'中', status:'待拍', createdAt:'2026-09-07'},
+    {id:'T03', title:'新手博主必看的5个工具', desc:'工具推荐类，适合挂合作链接。', tags:['工具','新手'], platform:'小红书', priority:'中', status:'拍摄中', createdAt:'2026-09-06'},
+  ],
+  reviews: [
+    {id:'R01', topicTitle:'自媒体工作台怎么搭', platform:'小红书', publishDate:'2026-09-05', views:3200, likes:186, saves:94, comments:23, conclusion:'封面点击率高，互动率偏低，下期加强提问式开头。'},
+    {id:'R02', topicTitle:'我的一周内容排期分享', platform:'小红书', publishDate:'2026-09-03', views:5800, likes:312, saves:201, comments:45, conclusion:'收藏率超预期，排期类内容可深挖。'},
+  ],
+  cooperations: [
+    {id:'C01', title:'品牌图文种草合作', brand:'某护肤品牌', amount:5000, deliverDate:'2026-09-25', platform:'小红书', status:'待回款', paymentStatus:'未回款', communication:'初稿已交付，客户确认发布后进入回款提醒。'},
+    {id:'C02', title:'短视频植入合作', brand:'某APP', amount:8000, deliverDate:'2026-09-20', platform:'抖音', status:'进行中', paymentStatus:'预付款已收', communication:'脚本已过审，本周拍摄。'},
+  ],
+  account: {
+    name:'枝恩日记',
+    platforms:['小红书','抖音','视频号'],
+    positioning:'分享自媒体成长与效率工具的实用主义博主',
+    contentDirection:['自媒体干货','效率工具','成长记录'],
+    personaKeywords:['真实','克制','实用','不贩卖焦虑'],
+    targetAudience:'25-35岁想做副业/自媒体的职场人'
+  },
+  backups: [
+    {id:'B01', name:'8月素材归档', type:'视频素材', date:'2026-09-01', archived:true},
+    {id:'B02', name:'8月合作合同', type:'合同文件', date:'2026-09-02', archived:true},
+    {id:'B03', name:'8月数据报表', type:'数据表', date:'2026-09-03', archived:false},
+  ],
+  copies: [
+    {id:'W01', dim:'硬核演示', cover:'无燃气管路\n3秒出明火\n220V家用电\n一插即用', favorite:false},
+    {id:'W02', dim:'硬核演示', cover:'火焰中心\n最高约1300℃\n3秒达爆炒油温\n锅气自然起', favorite:false},
+    {id:'W03', dim:'硬核演示', cover:'真明火非电磁\n不挑锅具\n铁锅不锈钢陶瓷\n通用适配', favorite:false},
+    {id:'W04', dim:'硬核演示', cover:'热效率约75-90%\n一度电炒四菜\n比煤气罐省\n长期更划算', favorite:false},
+    {id:'W05', dim:'硬核演示', cover:'多档火力调节\n小火慢炖到爆炒\n精准控温\n菜品口感稳定', favorite:false},
+    {id:'W06', dim:'硬核演示', cover:'等离子电离技术\n空气转化火焰\n无需燃料\n结构更简单', favorite:false},
+    {id:'W07', dim:'硬核演示', cover:'连续工作稳定\n长时间烹饪不减火力\n商用级表现\n后厨可用', favorite:false},
+    {id:'W08', dim:'硬核演示', cover:'万瓦级功率配置\n出餐速度提升\n饭店后厨换灶\n首选方案', favorite:false},
+    {id:'W09', dim:'安全科普', cover:'离锅自动断火\n智能感应锅具\n端起即灭\n放回复燃', favorite:false},
+    {id:'W10', dim:'安全科普', cover:'无燃气无气罐\n从根源杜绝\n燃气泄漏隐患\n厨房更安心', favorite:false},
+    {id:'W11', dim:'安全科普', cover:'防干烧保护\n锅烧干自动断电\n30分钟自动熄火\n忘关火也不怕', favorite:false},
+    {id:'W12', dim:'安全科普', cover:'童锁功能开启\n儿童误按无效\n家中有小孩\n也能放心使用', favorite:false},
+    {id:'W13', dim:'安全科普', cover:'多层绝缘防护\n防渗水防漏电\n泼水环境下\n仍可正常工作', favorite:false},
+    {id:'W14', dim:'安全科普', cover:'无一氧化碳\n无二氧化硫排放\n不消耗室内氧气\n厨房空气清新', favorite:false},
+    {id:'W15', dim:'安全科普', cover:'过温保护机制\n异常自动断电\n多重安全防护\n使用更放心', favorite:false},
+    {id:'W16', dim:'安全科普', cover:'CQC安全认证\n国家权威检测\n品质有保障\n选购更安心', favorite:false},
+    {id:'W17', dim:'安全科普', cover:'整机防水设计\n厨房潮湿环境\n也能稳定运行\n不怕溅水', favorite:false},
+    {id:'W18', dim:'生活场景', cover:'租房不通燃气\n一个插座即可\n实现爆炒烹饪\n出租屋也有锅气', favorite:false},
+    {id:'W19', dim:'生活场景', cover:'开放式厨房适用\n无废气无油烟味\n客厅不受影响\n空气保持清爽', favorite:false},
+    {id:'W20', dim:'生活场景', cover:'营地接电可用\n告别气罐负重\n比卡式炉火力稳\n露营也能爆炒', favorite:false},
+    {id:'W21', dim:'生活场景', cover:'房车驻车接电\n即可开火烹饪\n不消耗车内氧气\n旅途也有家味', favorite:false},
+    {id:'W22', dim:'生活场景', cover:'老人做饭更安全\n无需开关燃气\n操作简单直观\n一学就会', favorite:false},
+    {id:'W23', dim:'生活场景', cover:'公寓禁用燃气\n电火灶合法合规\n满足消防要求\n放心使用', favorite:false},
+    {id:'W24', dim:'生活场景', cover:'小户型厨房首选\n无需预留燃气管道\n安装位置灵活\n节省空间', favorite:false},
+    {id:'W25', dim:'品牌故事', cover:'300+项专利\n从芯片到腔体\n全套自研技术\n非拼装仿品', favorite:false},
+    {id:'W26', dim:'品牌故事', cover:'电火灶节能认证\n规范起草单位\n行业标准制定者\n技术领先', favorite:false},
+    {id:'W27', dim:'品牌故事', cover:'远销40+国家\n新加坡东南亚\n国内同款同质\n品牌实力', favorite:false},
+    {id:'W28', dim:'品牌故事', cover:'十几年技术积累\n从实验室到厨房\n持续迭代优化\n品质可靠', favorite:false},
+    {id:'W29', dim:'品牌故事', cover:'核心部件自研\n等离子发生腔体\n控制芯片自主\n技术壁垒高', favorite:false},
+    {id:'W30', dim:'品牌故事', cover:'华火品牌出品\n工厂销售一体\n源头厂家直供\n性价比更高', favorite:false}
+  ],
+  scripts: [
+    {id:'S01', title:'电火灶三秒出火演示', topic:'硬核演示', duration:'45秒', status:'已完成', content:'你看，这是电火灶，没有燃气管也没有气罐，插上220V家用电就行。按一下，火起来了。油热了，青菜下锅——你听这声儿。', storyboard:'1. 全景-电火灶外观，手指点开关\n2. 特写-火焰燃起\n3. 中景-倒油入锅\n4. 特写-青菜下锅，油花四溅'},
+    {id:'S02', title:'离锅自动断火安全演示', topic:'安全科普', duration:'30秒', status:'撰写中', content:'', storyboard:''},
+    {id:'S03', title:'出租屋一个插座变厨房', topic:'生活场景', duration:'40秒', status:'待写', content:'', storyboard:''}
+  ],
+  dailyWork: [
+    {id:'D01', date:'2026-09-10', title:'拍摄 3 条信息流视频', done:true, note:'电火灶硬核演示系列'},
+    {id:'D02', date:'2026-09-10', title:'筛选今日文案 20 条', done:true, note:'从文案库挑选 5 条可用'},
+    {id:'D03', date:'2026-09-10', title:'撰写口播脚本 1 条', done:false, note:'离锅自动断火安全演示'},
+    {id:'D04', date:'2026-09-10', title:'回复经销商消息', done:false, note:''}
+  ],
+  aiConfig: {
+    baseUrl: (location.protocol === 'http:' || location.protocol === 'https:') ? 'https://ark.cn-beijing.volces.com/api/v3' : 'http://localhost:9688',
+    apiKey: 'ark-4cb7ef0e-c5e1-4092-941e-e03e93dfa884-b08d8',
+    model: 'ep-20260910151359-sz5qk',
+    systemPrompt: '你是华焰天下电火灶信息流文案写手，为经销商分发到各平台用。\n\n【输出格式】每条文案严格按此格式，不要加序号、不要加解释：\n---\n维度：硬核演示\n封面：无燃气管路/3秒出明火/220V家用电/一插即用\n---\n维度：安全科普\n封面：离锅即断火/智能感应防干烧/童锁防护/主动安全\n---\n\n【硬性要求】\n1. 封面文字3-4行，每行≤8字\n2. 商业化书面语，禁口语化（不用"你看""那一下"等）\n3. 只写功能/参数/卖点，禁场景画面描写\n4. 数字参数必须真实，不得编造\n5. 禁绝对化用语（最/第一/100%/绝对等）\n6. 每条之间用 --- 分隔\n7. 维度只能是：硬核演示、安全科普、生活场景、品牌故事'
+  },
+  seq: { topic: 4, review: 3, coop: 3, backup: 4, copy: 31, script: 4, daily: 5 }
+};
+
+function load() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(KEY));
+    if (!stored) return JSON.parse(JSON.stringify(defaultData));
+    // 合并新字段，兼容旧版数据
+    const merged = {...defaultData, ...stored};
+    if (!merged.copies) merged.copies = JSON.parse(JSON.stringify(defaultData.copies));
+    if (!merged.scripts) merged.scripts = JSON.parse(JSON.stringify(defaultData.scripts));
+    if (!merged.dailyWork) merged.dailyWork = JSON.parse(JSON.stringify(defaultData.dailyWork));
+    if (!merged.aiConfig) merged.aiConfig = JSON.parse(JSON.stringify(defaultData.aiConfig));
+    else {
+      // 如果通过 http/https 访问（手机/公网），用相对路径走当前域名
+      // 如果是 file:// 本地访问，用 localhost
+      merged.aiConfig.baseUrl = (location.protocol === 'http:' || location.protocol === 'https:') ? 'https://ark.cn-beijing.volces.com/api/v3' : 'http://localhost:9688';
+      merged.aiConfig.apiKey = defaultData.aiConfig.apiKey;
+      merged.aiConfig.model = defaultData.aiConfig.model;
+      if (!merged.aiConfig.systemPrompt) merged.aiConfig.systemPrompt = defaultData.aiConfig.systemPrompt;
+    }
+    if (!merged.seq) merged.seq = {...defaultData.seq};
+    else {
+      if (!merged.seq.copy) merged.seq.copy = defaultData.seq.copy;
+      if (!merged.seq.script) merged.seq.script = defaultData.seq.script;
+      if (!merged.seq.daily) merged.seq.daily = defaultData.seq.daily;
+    }
+    return merged;
+  }
+  catch(e) { return JSON.parse(JSON.stringify(defaultData)); }
+}
+function save() { localStorage.setItem(KEY, JSON.stringify(data)); }
+let data = load();
+
+// ===== 导航 =====
+const pageMeta = {
+  home: {title:'首页总览', sub:'每天先看这里，快速处理选题、文案、合作和备份。'},
+  topics: {title:'选题库', sub:'管理你的内容选题，从灵感到发布全流程跟踪。'},
+  copies: {title:'文案库', sub:'积累和筛选信息流文案，支持一键生成和指令更新。'},
+  scripts: {title:'口播文案', sub:'跟踪口播脚本进度，从待写到完成。'},
+  reviews: {title:'数据复盘', sub:'记录发布内容的数据表现，总结经验。'},
+  daily: {title:'工作归档', sub:'按周/月/年翻阅历史工作记录，回顾本周本月做了什么。'},
+  cooperations: {title:'合作跟踪', sub:'商业合作从沟通到回款的全流程管理。'},
+  account: {title:'账号定位', sub:'明确你的人设、内容方向和目标受众。'},
+  backup: {title:'数据备份', sub:'资料归档与完整度跟踪，避免素材丢失。'}
+};
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const p = item.dataset.page;
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+    document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
+    document.getElementById('page-' + p).classList.add('active');
+    document.getElementById('topbarTitle').textContent = pageMeta[p].title;
+    document.getElementById('topbarSub').textContent = pageMeta[p].sub;
+    renderPage(p);
+  });
+});
+
+function renderPage(p) {
+  if (p === 'home') renderHome();
+  else if (p === 'topics') renderTopics();
+  else if (p === 'copies') renderCopies();
+  else if (p === 'scripts') renderScripts();
+  else if (p === 'reviews') renderReviews();
+  else if (p === 'daily') renderDaily();
+  else if (p === 'cooperations') renderCooperations();
+  else if (p === 'account') renderAccount();
+  else if (p === 'backup') renderBackup();
+}
+
+// ===== 统计 =====
+function stats() {
+  const topics = data.topics;
+  return {
+    todoTopics: topics.filter(t => t.status === '待拍' || t.status === '拍摄中').length,
+    copyTotal: data.copies.length,
+    scriptTodo: data.scripts.filter(s => s.status === '待写' || s.status === '撰写中').length,
+    pendingPublish: topics.filter(t => t.status === '待发布').length,
+    pendingReview: data.reviews.filter(r => !r.conclusion).length + topics.filter(t => t.status === '已发布').length,
+    activeCoop: data.cooperations.filter(c => c.status === '进行中' || c.status === '待交付').length,
+    pendingPay: data.cooperations.filter(c => c.paymentStatus !== '已回款').length,
+    completeness: calcCompleteness()
+  };
+}
+function calcCompleteness() {
+  const total = data.topics.length + data.reviews.length + data.cooperations.length + data.backups.length + data.copies.length + data.scripts.length;
+  if (!total) return 0;
+  const done = data.reviews.filter(r => r.conclusion).length
+    + data.cooperations.filter(c => c.paymentStatus === '已回款').length
+    + data.backups.filter(b => b.archived).length
+    + data.copies.filter(c => c.favorite).length
+    + data.scripts.filter(s => s.status === '已完成').length;
+  return Math.round(done / total * 100);
+}
+
+// ===== 首页 =====
+function renderHome() {
+  const s = stats();
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${s.todoTopics}</div><div class="stat-label">待创作选题</div></div>
+    <div class="stat-card"><div class="stat-num">${s.copyTotal}</div><div class="stat-label">文案库总数</div></div>
+    <div class="stat-card"><div class="stat-num">${s.scriptTodo}</div><div class="stat-label">口播待写</div></div>
+    <div class="stat-card"><div class="stat-num">${s.pendingPublish}</div><div class="stat-label">待发布内容</div></div>
+    <div class="stat-card"><div class="stat-num">${s.pendingReview}</div><div class="stat-label">待复盘内容</div></div>
+    <div class="stat-card"><div class="stat-num">${s.activeCoop}</div><div class="stat-label">进行中合作</div></div>
+    <div class="stat-card"><div class="stat-num">${s.pendingPay}</div><div class="stat-label">待回款项目</div></div>
+    <div class="stat-card"><div class="stat-num">${s.completeness}<span class="unit">%</span></div><div class="stat-label">资料备份完整度</div></div>
+  `;
+
+  // 今日重点：取待拍/待回款
+  const todoTopics = data.topics.filter(t => t.status === '待拍' || t.status === '拍摄中').slice(0, 4);
+  const todoCoops = data.cooperations.filter(c => c.status === '待回款' || c.status === '待交付').slice(0, 4);
+  const tasks = [...todoTopics.map(t => ({...t, type:'topic'})), ...todoCoops.map(c => ({...c, type:'coop'}))].slice(0, 4);
+  document.getElementById('todayTasks').innerHTML = tasks.length ? tasks.map(t => {
+    if (t.type === 'topic') {
+      return `<div class="task-card">
+        <div class="task-top"><span class="task-id">${t.id}</span><span class="task-status ${statusClass(t.status)}">${t.status}</span></div>
+        <div class="task-title">${t.title}</div>
+        <div class="task-desc">${t.desc}</div>
+        <div class="task-tags">${t.tags.map((tag,i) => `<span class="task-tag ${i===0?'hot':''}">${tag}</span>`).join('')}${t.priority==='高'?'<span class="task-tag hot">高优先级</span>':''}</div>
+        <div class="task-actions">
+          <button class="task-action-btn" onclick="editTopic('${t.id}')">打开</button>
+          <button class="task-action-btn" onclick="cycleTopicStatus('${t.id}')">改状态</button>
+        </div>
+      </div>`;
+    } else {
+      return `<div class="task-card">
+        <div class="task-top"><span class="task-id">${t.id}</span><span class="task-status status-review">${t.status}</span></div>
+        <div class="task-title">${t.title}</div>
+        <div class="task-desc">${t.communication}</div>
+        <div class="task-meta"><span>¥${t.amount.toLocaleString()}</span><span>${t.deliverDate}</span><span>${t.platform}</span></div>
+        <div class="task-actions">
+          <button class="task-action-btn" onclick="editCoop('${t.id}')">打开</button>
+          <button class="task-action-btn" onclick="markPaid('${t.id}')">标记回款</button>
+        </div>
+      </div>`;
+    }
+  }).join('') : '<div class="empty"><div class="empty-icon">🎉</div>今日无待办事项</div>';
+
+  // 最近提醒
+  const reminders = [];
+  const unreviewed = data.reviews.filter(r => !r.conclusion).length;
+  if (unreviewed) reminders.push({dot:'var(--tag-red)', title:`${unreviewed} 条内容已发布但未复盘`, desc:'建议补充播放、收藏、评论和结论。', action:'复盘', cls:'review'});
+  const dueCoop = data.cooperations.filter(c => c.status === '待交付' || c.status === '待回款').length;
+  if (dueCoop) reminders.push({dot:'var(--tag-orange)', title:`${dueCoop} 个合作临近交付`, desc:'请确认脚本、封面和交付文件。', action:'合作', cls:'coop'});
+  const todayTasks = data.dailyWork.filter(d => d.date === todayStr() && !d.done).length;
+  if (todayTasks) reminders.push({dot:'var(--tag-blue)', title:`今日还有 ${todayTasks} 项工作待完成`, desc:'前往日常工作打卡完成。', action:'打卡', cls:'daily'});
+  const unarchived = data.backups.filter(b => !b.archived).length;
+  if (unarchived) reminders.push({dot:'var(--accent)', title:`${unarchived} 个素材未归档`, desc:'建议放入内容备份或素材备份。', action:'备份', cls:'backup'});
+  document.getElementById('reminderList').innerHTML = reminders.length ? reminders.map(r => `
+    <div class="reminder-item">
+      <div class="reminder-dot" style="background:${r.dot}"></div>
+      <div class="reminder-main">
+        <div class="reminder-title">${r.title}</div>
+        <div class="reminder-desc">${r.desc}</div>
+      </div>
+      <div class="reminder-action ${r.cls}" onclick="gotoReminder('${r.cls}')">${r.action}</div>
+    </div>
+  `).join('') : '<div class="empty">暂无提醒</div>';
+
+  renderHomeDaily();
+  updateSidebarCompleteness();
+}
+
+// ===== 首页今日工作打卡 =====
+function getHomeDailyDate() {
+  const d = document.getElementById('homeDailyDate');
+  if (d && !d.value) d.value = todayStr();
+  return d ? d.value : todayStr();
+}
+function renderHomeDaily() {
+  if (!document.getElementById('homeDailyList')) return;
+  const date = getHomeDailyDate();
+  document.getElementById('homeTodayDate').textContent = date;
+  const list = data.dailyWork.filter(d => d.date === date);
+  const total = list.length;
+  const done = list.filter(d => d.done).length;
+  const percent = total ? Math.round(done / total * 100) : 0;
+
+  document.getElementById('homeDailyProgress').innerHTML = `
+    <div style="font-size:36px;font-weight:700;color:var(--accent);line-height:1">${done}<span style="font-size:18px;color:var(--text-soft);font-weight:400">/${total}</span></div>
+    <div style="font-size:12px;color:var(--text-soft);margin:8px 0 12px">完成 ${percent}%</div>
+    <div class="completeness-bar"><div class="completeness-fill" style="width:${percent}%;background:${done===total&&total>0?'var(--tag-green)':'var(--accent)'}"></div></div>
+    ${done === total && total > 0 ? '<div style="color:var(--tag-green);font-size:12px;margin-top:10px;font-weight:500">🎉 全部完成</div>' : `<div style="font-size:11px;color:var(--text-mute);margin-top:10px">还剩 ${total - done} 项</div>`}
+  `;
+
+  const el = document.getElementById('homeDailyList');
+  if (!list.length) { el.innerHTML = '<div class="empty" style="padding:20px"><div class="empty-icon" style="font-size:28px;margin-bottom:8px">📋</div>今日暂无任务，点右上角"新增"添加</div>'; return; }
+
+  // 每条任务统一截止 18:30，从 9:30 开始倒计时，午休 12:00-14:00 不计时
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds()/60;
+  const startMin = 9 * 60 + 30;
+  const lunchStart = 12 * 60;
+  const lunchEnd = 14 * 60;
+  const endMin = 18 * 60 + 30;
+  const isWeekday = now.getDay() >= 1 && now.getDay() <= 5;
+  const isWorkTime = isWeekday && (nowMin >= startMin && nowMin < lunchStart || nowMin >= lunchEnd && nowMin < endMin);
+  const isLunch = isWeekday && nowMin >= lunchStart && nowMin < lunchEnd;
+
+  el.innerHTML = list.map(d => {
+    let timerHtml = '';
+    if (d.done) {
+      timerHtml = `<div class="task-timer done"><span class="timer-label">✓ 已完成</span></div>`;
+    } else if (isWorkTime) {
+      let remainMin;
+      if (nowMin < lunchStart) {
+        remainMin = (lunchStart - nowMin) + (endMin - lunchEnd);
+      } else {
+        remainMin = endMin - nowMin;
+      }
+      const h = Math.floor(remainMin / 60);
+      const m = Math.floor(remainMin % 60);
+      const s = Math.floor((remainMin * 60) % 60);
+      timerHtml = `<div class="task-timer">
+        <span class="timer-label">⏰ 截止18:30</span>
+        <span class="timer-time">${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}</span>
+      </div>`;
+    } else if (isLunch) {
+      timerHtml = `<div class="task-timer lunch"><span class="timer-label">🍱 午休中</span></div>`;
+    } else if (isWeekday && nowMin >= endMin) {
+      timerHtml = `<div class="task-timer overtime"><span class="timer-label">⏰ 已超时</span></div>`;
+    } else if (isWeekday && nowMin < startMin) {
+      timerHtml = `<div class="task-timer"><span class="timer-label">⏰ 9:30开始</span></div>`;
+    }
+    return `
+    <div class="backup-item" style="padding:10px 0;align-items:flex-start;gap:12px;border-bottom:1px solid var(--border-soft)">
+      <input type="checkbox" ${d.done?'checked':''} onchange="toggleDaily('${d.id}');renderHomeDaily()" style="width:17px;height:17px;margin-top:2px;accent-color:var(--accent);cursor:pointer">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:500;color:${d.done?'var(--text-mute)':'var(--text)'};text-decoration:${d.done?'line-through':'none'}">${d.title}</div>
+        ${d.note?`<div style="font-size:11px;color:var(--text-soft);margin-top:3px">${d.note}</div>`:''}
+        ${timerHtml}
+      </div>
+      <div style="display:flex;gap:2px">
+        <button class="icon-btn" onclick="editDaily('${d.id}')" style="width:24px;height:24px;font-size:12px" title="编辑">✎</button>
+        <button class="icon-btn" onclick="delDaily('${d.id}');renderHomeDaily()" style="width:24px;height:24px;font-size:12px" title="删除">🗑</button>
+      </div>
+    </div>
+  `;}).join('');
+}
+
+// ===== 工作日下班倒计时 =====
+let workCountdownTimer = null;
+function startWorkCountdown() {
+  if (workCountdownTimer) clearInterval(workCountdownTimer);
+  updateWorkCountdown();
+  workCountdownTimer = setInterval(updateWorkCountdown, 1000);
+}
+function updateWorkCountdown() {
+  const el = document.getElementById('workCountdown');
+  if (!el) return;
+  // 同步刷新任务列表倒计时数字（不重建 DOM）
+  if (document.getElementById('homeDailyList')) renderHomeDailyTimers();
+  const now = new Date();
+  const today = now.getDay();
+  const isWeekend = today === 0 || today === 6;
+  const startMin = 9 * 60 + 30;
+  const lunchStart = 12 * 60;
+  const lunchEnd = 14 * 60;
+  const endMin = 18 * 60 + 30;
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const workTotalMin = (lunchStart - startMin) + (endMin - lunchEnd);
+
+  let html = '';
+  if (isWeekend) {
+    html = `<div style="font-size:11px;opacity:0.8;margin-bottom:4px">周末休息</div>
+            <div style="font-size:20px;font-weight:700">🎉 休息日</div>
+            <div style="font-size:10px;opacity:0.7;margin-top:6px">工作时间 09:30 - 18:30</div>`;
+  } else if (nowMin < startMin) {
+    const diff = startMin - nowMin;
+    const h = Math.floor(diff / 60);
+    const m = diff % 60;
+    html = `<div style="font-size:11px;opacity:0.8;margin-bottom:4px">距离上班</div>
+            <div style="font-size:28px;font-weight:700;font-family:Consolas,monospace">${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}</div>
+            <div style="font-size:10px;opacity:0.7;margin-top:6px">09:30 开始计时</div>`;
+  } else if (nowMin >= endMin) {
+    html = `<div style="font-size:11px;opacity:0.8;margin-bottom:4px">今日工作</div>
+            <div style="font-size:20px;font-weight:700">✓ 已结束</div>
+            <div style="font-size:10px;opacity:0.7;margin-top:6px">18:30 下班</div>`;
+  } else if (nowMin >= lunchStart && nowMin < lunchEnd) {
+    const diff = lunchEnd - nowMin;
+    const h = Math.floor(diff / 60);
+    const m = diff % 60;
+    html = `<div style="font-size:11px;opacity:0.8;margin-bottom:4px">午休中</div>
+            <div style="font-size:28px;font-weight:700;font-family:Consolas,monospace">${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}</div>
+            <div style="font-size:10px;opacity:0.7;margin-top:6px">14:00 继续计时</div>`;
+  } else {
+    let remainingMin;
+    if (nowMin < lunchStart) {
+      remainingMin = (lunchStart - nowMin) + (endMin - lunchEnd);
+    } else {
+      remainingMin = endMin - nowMin;
+    }
+    let elapsedMin;
+    if (nowMin < lunchStart) {
+      elapsedMin = nowMin - startMin;
+    } else {
+      elapsedMin = (lunchStart - startMin) + (nowMin - lunchEnd);
+    }
+    const pct = Math.min(100, Math.round(elapsedMin / workTotalMin * 100));
+    const h = Math.floor(remainingMin / 60);
+    const m = Math.floor(remainingMin % 60);
+    const s = 59 - now.getSeconds();
+    html = `<div style="font-size:11px;opacity:0.8;margin-bottom:4px">距下班剩余</div>
+            <div style="font-size:28px;font-weight:700;font-family:Consolas,monospace;letter-spacing:1px">${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}</div>
+            <div style="font-size:10px;opacity:0.7;margin-top:6px">工作时间 09:30-12:00 / 14:00-18:30</div>
+            <div style="background:rgba(255,255,255,0.2);border-radius:4px;height:4px;margin-top:8px;overflow:hidden">
+              <div style="background:#fff;height:100%;width:${pct}%;transition:width 1s"></div>
+            </div>
+            <div style="font-size:10px;opacity:0.7;margin-top:4px">已过 ${pct}%</div>`;
+  }
+  el.innerHTML = html;
+}
+// 每秒刷新任务倒计时数字（不重建 DOM）
+function renderHomeDailyTimers() {
+  const timers = document.querySelectorAll('.task-timer:not(.done):not(.lunch)');
+  if (!timers.length) return;
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds()/60;
+  const lunchStart = 12 * 60;
+  const lunchEnd = 14 * 60;
+  const endMin = 18 * 60 + 30;
+  document.querySelectorAll('.task-timer:not(.done):not(.lunch):not(.overtime)').forEach(timerEl => {
+    let remainMin;
+    if (nowMin < lunchStart) {
+      remainMin = (lunchStart - nowMin) + (endMin - lunchEnd);
+    } else {
+      remainMin = endMin - nowMin;
+    }
+    const h = Math.floor(remainMin / 60);
+    const m = Math.floor(remainMin % 60);
+    const s = Math.floor((remainMin * 60) % 60);
+    const timeEl = timerEl.querySelector('.timer-time');
+    if (timeEl) timeEl.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  });
+}
+
+// ===== AI 助手对话 =====
+let aiChatHistory = []; // {role, content}
+async function askAI(presetQuestion) {
+  const input = document.getElementById('aiChatInput');
+  const log = document.getElementById('aiChatLog');
+  const q = (presetQuestion || input.value).trim();
+  if (!q || presetQuestion === undefined && input.value.trim() === '') return;
+  if (!presetQuestion && input) input.value = '';
+  const cfg = data.aiConfig;
+  if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) { showToast('请先启动工作台.bat（AI 代理）', '#D4873C'); return; }
+
+  // 显示用户消息
+  aiChatHistory.push({ role: 'user', content: q });
+  log.innerHTML = aiChatHistory.map(m => `<div class="ai-msg ${m.role==='user'?'user':'bot'}">${escHtml(m.content)}</div>`).join('') + '<div class="ai-msg bot thinking">思考中…</div>';
+  log.scrollTop = log.scrollHeight;
+
+  try {
+    const resp = await fetch(`${cfg.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.apiKey}` },
+      body: JSON.stringify({
+        model: cfg.model,
+        messages: [
+          { role: 'system', content: '你是华焰天下电火灶品牌部的AI助手，服务对象是品牌部的拍摄剪辑师Alon。他制作电火灶信息流视频（面向经销商分发抖音/小红书/视频号）和口播产品宣传视频。回答要点：\n1. 关于产品热点、选题、文案的问题：给出具体可执行的建议，符合信息流视频调性\n2. 产品参数基于事实，不编造；禁绝对化用语（最/第一/100%等）；禁标题党\n3. 回答简洁实用，用短段落，重点内容加【】标注，控制在300字内' },
+          ...aiChatHistory.slice(-8)
+        ],
+        temperature: 0.8,
+        max_tokens: 800,
+        thinking: { type: "disabled" }
+      })
+    });
+    if (!resp.ok) { const err = await resp.json().catch(()=>({})); throw new Error(err.error?.message || `HTTP ${resp.status}`); }
+    const json = await resp.json();
+    const content = json.choices?.[0]?.message?.content || '（无返回内容）';
+    aiChatHistory.push({ role: 'assistant', content });
+    log.innerHTML = aiChatHistory.map(m => `<div class="ai-msg ${m.role==='user'?'user':'bot'}">${escHtml(m.content)}</div>`).join('');
+    log.scrollTop = log.scrollHeight;
+  } catch(e) {
+    aiChatHistory.pop(); // 移除失败的用户消息，方便重试
+    log.innerHTML = aiChatHistory.map(m => `<div class="ai-msg ${m.role==='user'?'user':'bot'}">${escHtml(m.content)}</div>`).join('') + `<div class="ai-msg bot">⚠️ 请求失败：${escHtml(e.message)}\n请确认已运行 启动工作台.bat</div>`;
+    log.scrollTop = log.scrollHeight;
+  }
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function statusClass(s) {
+  if (s.includes('拍') || s.includes('待')) return 'status-todo';
+  if (s.includes('回款') || s.includes('复盘')) return 'status-review';
+  if (s.includes('进行')) return 'status-doing';
+  return 'status-done';
+}
+function gotoReminder(cls) {
+  const map = {review:'reviews', coop:'cooperations', backup:'backup', daily:'daily'};
+  document.querySelector(`.nav-item[data-page="${map[cls]}"]`).click();
+}
+
+function updateSidebarCompleteness() {
+  const c = calcCompleteness();
+  document.getElementById('sideCompleteness').style.width = c + '%';
+  document.getElementById('sideCompText').textContent = `${c}% 已归档，建议补充合同和视频源文件。`;
+}
+
+// ===== 选题库 =====
+let topicFilter = 'all', topicSearch = '';
+function renderTopics() {
+  const toolbar = document.getElementById('topicToolbar');
+  const filters = [
+    {k:'all', label:'全部'}, {k:'待拍', label:'待拍'}, {k:'拍摄中', label:'拍摄中'},
+    {k:'待发布', label:'待发布'}, {k:'已发布', label:'已发布'}
+  ];
+  toolbar.innerHTML = filters.map(f => `<span class="filter-chip ${topicFilter===f.k?'active':''}" onclick="setTopicFilter('${f.k}')">${f.label}</span>`).join('') +
+    `<input class="search-input" placeholder="搜索选题标题…" value="${topicSearch}" oninput="topicSearch=this.value.trim();renderTopics()">`;
+
+  let list = data.topics;
+  if (topicFilter !== 'all') list = list.filter(t => t.status === topicFilter);
+  if (topicSearch) list = list.filter(t => t.title.includes(topicSearch) || t.desc.includes(topicSearch));
+
+  const table = document.getElementById('topicTable');
+  if (!list.length) { table.innerHTML = '<tr><td class="empty" colspan="7"><div class="empty-icon">📝</div>暂无选题，点击右上角新增</td></tr>'; return; }
+  table.innerHTML = `<thead><tr><th>编号</th><th>标题</th><th>标签</th><th>平台</th><th>优先级</th><th>状态</th><th>操作</th></tr></thead><tbody>` +
+    list.map(t => `<tr>
+      <td style="color:var(--accent);font-family:Consolas,monospace;font-size:12px">${t.id}</td>
+      <td style="font-weight:500">${t.title}<div style="font-size:11px;color:var(--text-soft);font-weight:400;margin-top:3px">${t.desc}</div></td>
+      <td>${t.tags.map(tag=>`<span class="task-tag">${tag}</span>`).join(' ')}</td>
+      <td>${t.platform}</td>
+      <td><span class="priority-tag ${t.priority==='高'?'p-high':t.priority==='中'?'p-mid':'p-low'}">${t.priority}</span></td>
+      <td><span class="task-status ${statusClass(t.status)}">${t.status}</span></td>
+      <td><div class="row-actions">
+        <button class="icon-btn" onclick="cycleTopicStatus('${t.id}')" title="改状态">↻</button>
+        <button class="icon-btn" onclick="editTopic('${t.id}')" title="编辑">✎</button>
+        <button class="icon-btn" onclick="delTopic('${t.id}')" title="删除">🗑</button>
+      </div></td>
+    </tr>`).join('') + '</tbody>';
+}
+function setTopicFilter(k) { topicFilter = k; renderTopics(); }
+const topicStatusFlow = ['待拍','拍摄中','待发布','已发布'];
+function cycleTopicStatus(id) {
+  const t = data.topics.find(x => x.id === id);
+  if (!t) return;
+  const idx = topicStatusFlow.indexOf(t.status);
+  t.status = topicStatusFlow[(idx + 1) % topicStatusFlow.length];
+  save(); renderPage(currentPage()); showToast(`状态已改为「${t.status}」`);
+}
+function delTopic(id) {
+  if (!confirm('确定删除该选题？')) return;
+  data.topics = data.topics.filter(t => t.id !== id);
+  save(); renderTopics(); showToast('已删除');
+}
+async function genTopics() {
+  const cfg = data.aiConfig;
+  const btn = document.getElementById('genTopicBtn');
+  const status = document.getElementById('topicGenStatus');
+  if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) {
+    showToast('请先在文案库点 ⚙ 配置豆包 API Key', '#D4873C');
+    return;
+  }
+  const count = +document.getElementById('topicCount').value;
+  const cmd = document.getElementById('topicCmd').value.trim();
+  btn.disabled = true; btn.style.opacity = '0.6';
+  status.textContent = '⏳ 生成中…';
+  try {
+    const resp = await fetch(`${cfg.baseUrl.replace(/\/$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.apiKey}` },
+      body: JSON.stringify({
+        model: cfg.model,
+        messages: [
+          { role: 'system', content: '你是电火灶信息流选题策划。每条选题输出一行，格式：标题 | 描述 | 标签1,标签2 | 平台 | 优先级' },
+          { role: 'user', content: `${cmd}\n\n要求：生成 ${count} 条选题。每行一条，用 | 分隔字段（标题|描述|标签|平台|优先级）。平台从小红书/抖音/视频号/公众号选，优先级从高/中/低选。只输出内容，不要解释。` }
+        ],
+        temperature: 0.8,
+        thinking: { type: "disabled" }
+      })
+    });
+    if (!resp.ok) { const err = await resp.json().catch(()=>({})); throw new Error(err.error?.message || `HTTP ${resp.status}`); }
+    const json = await resp.json();
+    const content = json.choices?.[0]?.message?.content || '';
+    const lines = content.split('\n').map(l => l.trim()).filter(l => l.includes('|'));
+    let added = 0;
+    lines.forEach(line => {
+      const parts = line.split('|').map(p => p.trim());
+      if (parts.length >= 2) {
+        const obj = {
+          id: 'T' + data.seq.topic++,
+          title: parts[0],
+          desc: parts[1] || '',
+          tags: (parts[2] || '').split(/[,，]/).map(s=>s.trim()).filter(Boolean),
+          platform: parts[3] || '抖音',
+          priority: parts[4] || '中',
+          status: '待拍',
+          createdAt: new Date().toISOString().slice(0,10)
+        };
+        data.topics.unshift(obj);
+        added++;
+      }
+    });
+    if (!added) throw new Error('解析结果为空');
+    save(); renderTopics();
+    status.textContent = `✅ 已生成 ${added} 条`;
+    showToast(`AI 已生成 ${added} 条选题`);
+  } catch(e) {
+    status.textContent = '❌ 失败';
+    showToast('生成失败：' + e.message, '#C75B5B');
+  } finally {
+    btn.disabled = false; btn.style.opacity = '1';
+    setTimeout(() => { status.textContent = ''; }, 5000);
+  }
+}
+function currentPage() { return document.querySelector('.nav-item.active').dataset.page; }
+
+// ===== 文案库 =====
+let copyFilter = 'all', copyShowFav = false;
+function renderCopies() {
+  const cfg = data.aiConfig;
+  const cfgEl = document.getElementById('cfgStatus');
+  if (cfgEl) cfgEl.textContent = `🔗 ${cfg.model.slice(-12)} · ${cfg.apiKey.slice(0,8)}…`;
+  const toolbar = document.getElementById('copyToolbar');
+  const filters = [
+    {k:'all', label:'全部'}, {k:'硬核演示', label:'硬核演示'}, {k:'安全科普', label:'安全科普'},
+    {k:'生活场景', label:'生活场景'}, {k:'品牌故事', label:'品牌故事'}
+  ];
+  const favCount = data.copies.filter(c => c.favorite).length;
+  toolbar.innerHTML = filters.map(f => `<span class="filter-chip ${copyFilter===f.k?'active':''}" onclick="copyFilter='${f.k}';renderCopies()">${f.label}</span>`).join('') +
+    `<span class="filter-chip ${copyShowFav?'active':''}" onclick="copyShowFav=!copyShowFav;renderCopies()">★ 收藏 ${favCount}</span>` +
+    `<span class="filter-chip" onclick="copyAll()">复制全部</span>`;
+
+  let list = data.copies;
+  if (copyFilter !== 'all') list = list.filter(c => c.dim === copyFilter);
+  if (copyShowFav) list = list.filter(c => c.favorite);
+
+  const el = document.getElementById('copyList');
+  if (!list.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">📝</div>暂无文案，点击上方"生成文案"或"手动新增"</div>'; return; }
+  el.innerHTML = '<div class="coop-grid">' + list.map(c => `
+    <div class="coop-card" style="${c.favorite?'border-color:var(--accent)':''}">
+      <div class="coop-head">
+        <div>
+          <div style="font-size:11px;color:var(--accent);font-family:Consolas,monospace">${c.id}</div>
+          <span class="tag dim-${c.dim==='硬核演示'?'hardcore':c.dim==='安全科普'?'safety':c.dim==='生活场景'?'scene':'brand'}" style="font-size:10px;padding:2px 8px;border-radius:8px;font-weight:500">${c.dim}</span>
+        </div>
+        <button class="icon-btn" onclick="toggleFav('${c.id}')" title="收藏" style="font-size:16px">${c.favorite?'★':'☆'}</button>
+      </div>
+      <div style="background:var(--bg);border-radius:6px;padding:10px 12px;border-left:2px solid var(--accent);margin:10px 0;font-size:13px;line-height:1.9;font-weight:500;color:var(--text)">${c.cover.replace(/\n/g,'<br>')}</div>
+      <div class="coop-actions">
+        <button class="task-action-btn" onclick="copyCover('${c.id}')">复制封面</button>
+        <button class="task-action-btn" onclick="editCopy('${c.id}')">编辑</button>
+        <button class="task-action-btn" onclick="delCopy('${c.id}')">删除</button>
+      </div>
+    </div>
+  `).join('') + '</div>';
+}
+async function genCopies() {
+  const dim = document.getElementById('genDim').value;
+  const count = +document.getElementById('genCount').value;
+  const cmd = document.getElementById('copyCmd').value.trim();
+  const cfg = data.aiConfig;
+
+  // 未配置 API：从预置库取
+  if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) {
+    const pool = dim === 'all' ? defaultData.copies : defaultData.copies.filter(c => c.dim === dim);
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    const picked = shuffled.slice(0, Math.min(count, pool.length));
+    picked.forEach(c => { if (!data.copies.find(x => x.cover === c.cover)) data.copies.unshift({...c, id:'W'+data.seq.copy++, favorite:false}); });
+    save(); renderCopies();
+    showToast(`已从预置库取出 ${picked.length} 条（配置 API 后可 AI 生成）`, '#D4873C');
+    return;
+  }
+
+  const btn = document.getElementById('genBtn');
+  const status = document.getElementById('genStatus');
+  btn.disabled = true; btn.style.opacity = '0.6';
+
+  const dimText = dim === 'all' ? '覆盖4个维度（硬核演示、安全科普、生活场景、品牌故事）' : `维度：${dim}`;
+  const userPrompt = `${cmd}\n\n生成 ${count} 条电火灶信息流文案，${dimText}。\n每条格式：\n---\n维度：xxx\n封面：第一行/第二行/第三行[/第四行]\n---\n\n严格按格式输出，每条之间用 --- 分隔，不要加序号和解释。`;
+
+  const updateStatus = (msg) => { status.textContent = msg; status.style.color = 'var(--text-soft)'; };
+
+  try {
+    updateStatus('⏳ 正在连接 AI...');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+    const resp = await fetch(`${cfg.baseUrl.replace(/\/$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.apiKey}` },
+      body: JSON.stringify({
+        model: cfg.model,
+        messages: [
+          { role: 'system', content: cfg.systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.85,
+        max_tokens: count * 60,
+        thinking: { type: "disabled" }
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (!resp.ok) {
+      let errMsg = `HTTP ${resp.status}`;
+      try { const err = await resp.json(); errMsg = err.error?.message || errMsg; } catch {}
+      throw new Error(`API 错误：${errMsg}`);
+    }
+
+    updateStatus('⏳ 正在解析文案...');
+    const json = await resp.json();
+    const content = json.choices?.[0]?.message?.content || '';
+    console.log('[AI返回原始内容]', content);
+
+    if (!content.trim()) throw new Error('AI 返回内容为空');
+
+    const parsed = parseAiCopies(content, dim);
+    if (!parsed.length) {
+      console.error('解析失败，原始内容：', content);
+      throw new Error('解析失败，AI 返回格式异常（请重试或调整指令）');
+    }
+
+    // 去重：跳过已存在的封面
+    const existingCovers = new Set(data.copies.map(c => c.cover));
+    const newCopies = parsed.filter(c => !existingCovers.has(c.cover));
+
+    updateStatus(`⏳ 写入 ${newCopies.length} 条新文案...`);
+    newCopies.forEach(c => {
+      c.id = 'W' + data.seq.copy++;
+      c.favorite = false;
+      data.copies.unshift(c);
+    });
+
+    save(); renderCopies();
+    const dupCount = parsed.length - newCopies.length;
+    status.textContent = `✅ 已生成 ${newCopies.length} 条${dupCount ? `（跳过 ${dupCount} 条重复）` : ''}`;
+    status.style.color = 'var(--tag-green)';
+    showToast(`AI 已生成 ${newCopies.length} 条新文案${dupCount ? `，跳过 ${dupCount} 条重复` : ''}`);
+  } catch(e) {
+    let msg = e.message;
+    if (e.name === 'AbortError') msg = '请求超时（60秒），请重试';
+    else if (e.message.includes('Failed to fetch')) msg = '网络错误或代理服务器未启动，请双击"启动工作台.bat"';
+    else if (e.message.includes('CORS')) msg = '跨域错误，请通过 http://localhost:9688 访问';
+    status.textContent = '❌ ' + msg;
+    status.style.color = '#C75B5B';
+    showToast('生成失败：' + msg, '#C75B5B');
+    console.error('生成失败详情：', e);
+  } finally {
+    btn.disabled = false; btn.style.opacity = '1';
+    setTimeout(() => { status.textContent = ''; status.style.color = ''; }, 6000);
+  }
+}
+
+// 解析 AI 返回的文案（支持多种格式）
+function parseAiCopies(text, defaultDim) {
+  // 1. 去掉 markdown 代码块标记
+  text = text.replace(/```[a-z]*\n?/g, '').replace(/```/g, '');
+
+  // 2. 统一换行符
+  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  const result = [];
+  const validDims = ['硬核演示', '安全科普', '生活场景', '品牌故事'];
+
+  // 3. 按 --- 分段（主要格式）
+  let blocks = text.split(/\n*---\n*/).map(b => b.trim()).filter(Boolean);
+
+  // 4. 如果 --- 分段只有1块，回退到按空行分段
+  if (blocks.length <= 1) {
+    blocks = text.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean);
+  }
+
+  // 5. 如果空行分段也只有1块，按"维度："分段
+  if (blocks.length <= 1 && text.includes('维度')) {
+    blocks = text.split(/(?=维度[：:])/).map(b => b.trim()).filter(Boolean);
+  }
+
+  blocks.forEach(block => {
+    if (!block) return;
+
+    // 提取维度
+    let dim = defaultDim;
+    const dimMatch = block.match(/维度[：:]\s*(.+)/);
+    if (dimMatch) {
+      const d = dimMatch[1].trim();
+      // 模糊匹配维度
+      if (validDims.includes(d)) dim = d;
+      else if (d.includes('硬核') || d.includes('演示')) dim = '硬核演示';
+      else if (d.includes('安全')) dim = '安全科普';
+      else if (d.includes('生活') || d.includes('场景')) dim = '生活场景';
+      else if (d.includes('品牌') || d.includes('故事')) dim = '品牌故事';
+    }
+
+    // 提取封面文字
+    let cover = '';
+    const coverMatch = block.match(/封面[：:]\s*([\s\S]*?)(?=\n维度[：:]|\n---|\n\s*\n|$)/);
+    if (coverMatch) {
+      cover = coverMatch[1].trim();
+    } else {
+      // 没有"封面："前缀，去掉维度行后取剩余内容
+      const lines = block.split('\n').filter(l => !l.match(/维度[：:]/) && l.trim() && !l.match(/^[-—]+$/));
+      if (lines.length >= 1) cover = lines.join('\n');
+    }
+
+    // 把封面的 / 分隔符转成换行
+    cover = cover.replace(/\s*[\/／]\s*/g, '\n').trim();
+
+    // 去掉序号前缀（如 "1. " "①" 等）
+    cover = cover.replace(/^\d+[.、）)]\s*/gm, '').replace(/^[①②③④⑤⑥⑦⑧⑨⑩]\s*/gm, '');
+
+    // 去掉 markdown 粗体标记
+    cover = cover.replace(/\*\*/g, '');
+
+    // 按换行分割，过滤空行，最多4行
+    const coverLines = cover.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 4);
+
+    if (coverLines.length >= 2) {
+      result.push({
+        dim,
+        cover: coverLines.join('\n')
+      });
+    }
+  });
+
+  return result;
+}
+function copyCmd() {
+  const cmd = document.getElementById('copyCmd').value.trim();
+  if (!cmd) { showToast('请输入指令', '#C75B5B'); return; }
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(cmd).then(() => showToast('指令已复制，粘贴到AI对话框发送'));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = cmd; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); showToast('指令已复制'); } catch(e) { showToast('复制失败', '#C75B5B'); }
+    document.body.removeChild(ta);
+  }
+}
+function copyAll() {
+  const text = data.copies.map(c => `【${c.dim}】${c.id}\n${c.cover}`).join('\n\n---\n\n');
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => showToast(`已复制 ${data.copies.length} 条文案`));
+  else showToast('复制失败', '#C75B5B');
+}
+function openApiConfig() {
+  const c = data.aiConfig;
+  openModal(`
+    <div class="modal-title">AI API 配置</div>
+    <div style="background:var(--bg);border-radius:6px;padding:10px 12px;font-size:12px;color:var(--text-soft);line-height:1.7;margin-bottom:14px">
+      支持所有 OpenAI 兼容接口（豆包/通义/智谱/DeepSeek 等）。<br>
+      填入后点击"AI 生成文案"即可实时调用，不断生成新文案。
+    </div>
+    <div class="form-group">
+      <label class="form-label">Base URL（接口地址）</label>
+      <input class="form-input" id="f_baseUrl" value="${c.baseUrl}" placeholder="如：https://ark.cn-beijing.volces.com/api/v3">
+      <div style="font-size:11px;color:var(--text-mute);margin-top:4px">
+        豆包：https://ark.cn-beijing.volces.com/api/v3 · 通义：https://dashscope.aliyuncs.com/compatible-mode/v3
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">API Key</label>
+      <input class="form-input" id="f_apiKey" value="${c.apiKey}" placeholder="你的 API Key" type="password">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Model（模型名）</label>
+      <input class="form-input" id="f_model" value="${c.model}" placeholder="如：doubao-1-5-lite-32k 或 qwen-plus">
+    </div>
+    <div class="form-group">
+      <label class="form-label">系统提示词（文案规则）</label>
+      <textarea class="form-textarea" id="f_sysPrompt" style="min-height:140px">${c.systemPrompt}</textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn" onclick="testApi()">测试连接</button>
+      <button class="btn btn-primary" onclick="saveApiConfig()">保存</button>
+    </div>
+  `);
+}
+function saveApiConfig() {
+  data.aiConfig.baseUrl = document.getElementById('f_baseUrl').value.trim();
+  data.aiConfig.apiKey = document.getElementById('f_apiKey').value.trim();
+  data.aiConfig.model = document.getElementById('f_model').value.trim();
+  data.aiConfig.systemPrompt = document.getElementById('f_sysPrompt').value.trim();
+  save(); closeModal(); showToast('API 配置已保存');
+}
+async function testApi() {
+  const baseUrl = document.getElementById('f_baseUrl').value.trim();
+  const apiKey = document.getElementById('f_apiKey').value.trim();
+  const model = document.getElementById('f_model').value.trim();
+  if (!baseUrl || !apiKey || !model) { showToast('请先填完三项', '#C75B5B'); return; }
+  showToast('测试中…');
+  try {
+    const resp = await fetch(`${baseUrl.replace(/\/$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({ model, messages: [{ role: 'user', content: '回复ok' }], max_tokens: 5 })
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    showToast('✅ 连接成功', '#5A8A5A');
+  } catch(e) {
+    showToast('❌ 连接失败：' + e.message, '#C75B5B');
+  }
+}
+function copyCover(id) {
+  const c = data.copies.find(x => x.id === id);
+  if (!c) return;
+  if (navigator.clipboard) navigator.clipboard.writeText(c.cover).then(() => showToast('封面文字已复制'));
+  else showToast('复制失败', '#C75B5B');
+}
+function toggleFav(id) {
+  const c = data.copies.find(x => x.id === id);
+  if (!c) return;
+  c.favorite = !c.favorite;
+  save(); renderCopies();
+}
+function delCopy(id) {
+  if (!confirm('确定删除该文案？')) return;
+  data.copies = data.copies.filter(c => c.id !== id);
+  save(); renderCopies(); showToast('已删除');
+}
+function openCopyModal(editId) {
+  const c = editId ? data.copies.find(x => x.id === editId) : null;
+  openModal(`
+    <div class="modal-title">${c?'编辑文案':'新增文案'}</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">维度</label>
+        <select class="form-select" id="f_dim">
+          ${['硬核演示','安全科普','生活场景','品牌故事'].map(d=>`<option ${c&&c.dim===d?'selected':''}>${d}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">编号（留空自动）</label>
+        <input class="form-input" id="f_id" value="${c?c.id:''}" placeholder="如 W31">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">封面文字（每行一条，3-4行）</label>
+      <textarea class="form-textarea" id="f_cover" style="min-height:120px" placeholder="无燃气管路&#10;3秒出明火&#10;220V家用电&#10;一插即用">${c?c.cover:''}</textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveCopy('${editId||''}')">保存</button>
+    </div>
+  `);
+}
+function saveCopy(id) {
+  const cover = document.getElementById('f_cover').value.trim();
+  if (!cover) { showToast('请输入封面文字', '#C75B5B'); return; }
+  const obj = {
+    dim: document.getElementById('f_dim').value,
+    cover, favorite: false
+  };
+  if (id) {
+    const old = data.copies.find(c => c.id === id);
+    old.dim = obj.dim; old.cover = cover;
+  } else {
+    const inp = document.getElementById('f_id').value.trim();
+    obj.id = inp || 'W' + data.seq.copy++;
+    if (!inp) data.seq.copy++;
+    data.copies.unshift(obj);
+  }
+  save(); closeModal(); renderCopies(); showToast('已保存');
+}
+function editCopy(id) { openCopyModal(id); }
+
+// ===== 口播文案 =====
+let scriptFilter = 'all';
+const scriptStatusFlow = ['待写','撰写中','待审核','已完成'];
+function renderScripts() {
+  const toolbar = document.getElementById('scriptToolbar');
+  const filters = [{k:'all',label:'全部'},...scriptStatusFlow.map(s=>({k:s,label:s}))];
+  toolbar.innerHTML = filters.map(f => `<span class="filter-chip ${scriptFilter===f.k?'active':''}" onclick="scriptFilter='${f.k}';renderScripts()">${f.label}</span>`).join('');
+
+  let list = data.scripts;
+  if (scriptFilter !== 'all') list = list.filter(s => s.status === scriptFilter);
+
+  const table = document.getElementById('scriptTable');
+  if (!list.length) { table.innerHTML = '<tr><td class="empty" colspan="7"><div class="empty-icon">🎤</div>暂无口播文案</td></tr>'; return; }
+  table.innerHTML = `<thead><tr><th>编号</th><th>标题</th><th>分镜</th><th>对应选题</th><th>时长</th><th>状态</th><th>操作</th></tr></thead><tbody>` +
+    list.map(s => {
+      const hasContent = s.content && s.content.trim();
+      const hasStory = s.storyboard && s.storyboard.trim();
+      const preview = buildScriptPreview(s);
+      return `<tr class="script-row" data-preview="${encodeURIComponent(preview)}">
+      <td style="color:var(--accent);font-family:Consolas,monospace;font-size:12px">${s.id}</td>
+      <td style="font-weight:500">${s.title}${hasContent?`<div class="cell-preview">${s.content.slice(0,40)}${s.content.length>40?'…':''}</div>`:'<div style="font-size:11px;color:var(--tag-orange);margin-top:3px">未填写内容</div>'}</td>
+      <td>${hasStory?`<div class="cell-preview">${s.storyboard.split('\n')[0].slice(0,30)}${s.storyboard.split('\n').length>1?' …':''}</div>`:'<span style="font-size:11px;color:var(--text-soft)">—</span>'}</td>
+      <td><span class="task-tag">${s.topic}</span></td>
+      <td>${s.duration}</td>
+      <td><span class="task-status ${statusClass(s.status)}">${s.status}</span></td>
+      <td><div class="row-actions">
+        <button class="icon-btn" onclick="cycleScriptStatus('${s.id}')" title="改状态">↻</button>
+        <button class="icon-btn" onclick="editScript('${s.id}')" title="编辑">✎</button>
+        <button class="icon-btn" onclick="delScript('${s.id}')" title="删除">🗑</button>
+      </div></td>
+    </tr>`;
+    }).join('') + '</tbody>';
+}
+function buildScriptPreview(s) {
+  let html = `<div style="font-weight:600;margin-bottom:8px;font-size:13px">${s.title}</div>`;
+  if (s.content) html += `<div style="margin-bottom:8px"><div style="font-size:11px;color:var(--text-soft);margin-bottom:3px">🎤 口播稿</div><div style="font-size:12px;line-height:1.6;white-space:pre-wrap">${s.content}</div></div>`;
+  if (s.storyboard) html += `<div><div style="font-size:11px;color:var(--text-soft);margin-bottom:3px">🎬 分镜</div><div style="font-size:12px;line-height:1.6;white-space:pre-wrap">${s.storyboard}</div></div>`;
+  return html;
+}
+function cycleScriptStatus(id) {
+  const s = data.scripts.find(x => x.id === id);
+  if (!s) return;
+  const idx = scriptStatusFlow.indexOf(s.status);
+  s.status = scriptStatusFlow[(idx + 1) % scriptStatusFlow.length];
+  save(); renderScripts(); showToast(`状态已改为「${s.status}」`);
+}
+function delScript(id) {
+  if (!confirm('确定删除该口播？')) return;
+  data.scripts = data.scripts.filter(s => s.id !== id);
+  save(); renderScripts(); showToast('已删除');
+}
+function openScriptModal(editId) {
+  const s = editId ? data.scripts.find(x => x.id === editId) : null;
+  openModal(`
+    <div class="modal-title">${s?'编辑口播':'新增口播'}</div>
+    <div class="form-group"><label class="form-label">标题</label><input class="form-input" id="f_title" value="${s?s.title:''}"></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">对应选题维度</label>
+        <select class="form-select" id="f_topic">
+          ${['硬核演示','安全科普','生活场景','品牌故事'].map(t=>`<option ${s&&s.topic===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">时长</label>
+        <input class="form-input" id="f_dur" value="${s?s.duration:'45秒'}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">状态</label>
+      <select class="form-select" id="f_status">
+        ${scriptStatusFlow.map(st=>`<option ${s&&s.status===st?'selected':''}>${st}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">口播内容</label><textarea class="form-textarea" id="f_content" style="min-height:120px" placeholder="输入口播逐字稿…">${s?s.content:''}</textarea></div>
+    <div class="form-group"><label class="form-label">分镜（每行一个镜头：景别-画面内容）</label><textarea class="form-textarea" id="f_story" style="min-height:100px" placeholder="1. 全景-电火灶外观\n2. 特写-火焰燃起\n3. 中景-倒油入锅">${s?s.storyboard:''}</textarea></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveScript('${editId||''}')">保存</button>
+    </div>
+  `);
+}
+function saveScript(id) {
+  const title = document.getElementById('f_title').value.trim();
+  if (!title) { showToast('请输入标题', '#C75B5B'); return; }
+  const obj = {
+    title, topic: document.getElementById('f_topic').value,
+    duration: document.getElementById('f_dur').value,
+    status: document.getElementById('f_status').value,
+    content: document.getElementById('f_content').value.trim(),
+    storyboard: document.getElementById('f_story').value.trim(),
+  };
+  if (id) Object.assign(data.scripts.find(s => s.id === id), obj);
+  else { obj.id = 'S' + data.seq.script++; data.scripts.unshift(obj); }
+  save(); closeModal(); renderScripts(); showToast('已保存');
+}
+function editScript(id) { openScriptModal(id); }
+async function genScript() {
+  const cfg = data.aiConfig;
+  const btn = document.getElementById('genScriptBtn');
+  const status = document.getElementById('scriptGenStatus');
+  if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) {
+    showToast('请先在文案库点 ⚙ 配置豆包 API Key', '#D4873C');
+    return;
+  }
+  const cmd = document.getElementById('scriptCmd').value.trim();
+  const dim = document.getElementById('scriptDim').value;
+  btn.disabled = true; btn.style.opacity = '0.6';
+  status.textContent = '⏳ 生成中…';
+  try {
+    const resp = await fetch(`${cfg.baseUrl.replace(/\/$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.apiKey}` },
+      body: JSON.stringify({
+        model: cfg.model,
+        messages: [
+          { role: 'system', content: '你是电火灶口播稿写手。输出格式如下，不要加多余解释：\n标题：xxx\n\n口播稿：\n[口播逐字稿正文，口语化有互动感，用"你看""你听"，45秒约150字]\n\n分镜：\n1. 景别-画面内容\n2. 景别-画面内容\n3. 景别-画面内容\n4. 景别-画面内容' },
+          { role: 'user', content: `${cmd}\n\n维度：${dim}。按上面的格式输出标题、口播稿和分镜。` }
+        ],
+        temperature: 0.8,
+        thinking: { type: "disabled" }
+      })
+    });
+    if (!resp.ok) { const err = await resp.json().catch(()=>({})); throw new Error(err.error?.message || `HTTP ${resp.status}`); }
+    const json = await resp.json();
+    const content = json.choices?.[0]?.message?.content || '';
+    const titleMatch = content.match(/标题[：:]\s*(.+)/);
+    const scriptMatch = content.match(/口播稿[：:]\s*([\s\S]*?)(?=\n分镜|$)/);
+    const storyMatch = content.match(/分镜[：:]\s*([\s\S]*)/);
+    const title = (titleMatch ? titleMatch[1] : content.split('\n')[0]).trim().replace(/^#+\s*/, '').slice(0, 30) || `${dim}口播`;
+    const body = scriptMatch ? scriptMatch[1].trim() : content.split('\n').slice(1).join('\n').trim();
+    const story = storyMatch ? storyMatch[1].trim() : '';
+    const obj = {
+      id: 'S' + data.seq.script++,
+      title,
+      topic: dim,
+      duration: '45秒',
+      status: '撰写中',
+      content: body,
+      storyboard: story
+    };
+    data.scripts.unshift(obj);
+    save(); renderScripts();
+    status.textContent = '✅ 已生成';
+    showToast('AI 已生成口播稿');
+  } catch(e) {
+    status.textContent = '❌ 失败';
+    showToast('生成失败：' + e.message, '#C75B5B');
+  } finally {
+    btn.disabled = false; btn.style.opacity = '1';
+    setTimeout(() => { status.textContent = ''; }, 5000);
+  }
+}
+
+// ===== 工作归档 =====
+function todayStr() { return new Date().toISOString().slice(0,10); }
+function parseDate(s) { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); }
+function startOfWeek(date) { const d = new Date(date); const day = d.getDay() || 7; d.setDate(d.getDate() - day + 1); d.setHours(0,0,0,0); return d; }
+function isSameWeek(d1, d2) { return startOfWeek(d1).getTime() === startOfWeek(d2).getTime(); }
+function isSameMonth(d1, d2) { return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth(); }
+function fmtWeekday(date) { return ['周日','周一','周二','周三','周四','周五','周六'][date.getDay()]; }
+
+let dailyView = 'week';
+function setDailyView(v) {
+  dailyView = v;
+  document.querySelectorAll('#dailyViewToggle button').forEach(b => b.classList.remove('on'));
+  document.querySelectorAll('#dailyViewToggle button')[v==='week'?0:v==='month'?1:2].classList.add('on');
+  renderDaily();
+}
+function renderDaily() {
+  const el = document.getElementById('dailyArchive');
+  if (!el) return;
+  const now = new Date();
+  let list = data.dailyWork.slice();
+
+  // 按视图过滤
+  if (dailyView === 'week') list = list.filter(d => isSameWeek(parseDate(d.date), now));
+  else if (dailyView === 'month') list = list.filter(d => isSameMonth(parseDate(d.date), now));
+
+  if (!list.length) { el.innerHTML = '<div class="card"><div class="empty"><div class="empty-icon">📋</div>该时段暂无工作记录</div></div>'; return; }
+
+  // 按日期倒序分组
+  const groups = {};
+  list.forEach(d => { (groups[d.date] = groups[d.date] || []).push(d); });
+  const dates = Object.keys(groups).sort((a,b) => b.localeCompare(a));
+
+  // 统计
+  const totalTasks = list.length;
+  const doneTasks = list.filter(d => d.done).length;
+
+  el.innerHTML = `
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">
+        <div><div style="font-size:24px;font-weight:700;color:var(--accent)">${doneTasks}<span style="font-size:13px;color:var(--text-soft);font-weight:400">/${totalTasks}</span></div><div style="font-size:11px;color:var(--text-soft);margin-top:2px">${dailyView==='week'?'本周':dailyView==='month'?'本月':'全部'}完成</div></div>
+        <div style="flex:1;min-width:120px"><div class="completeness-bar"><div class="completeness-fill" style="width:${totalTasks?Math.round(doneTasks/totalTasks*100):0}%;background:${doneTasks===totalTasks?'var(--tag-green)':'var(--accent)'}"></div></div></div>
+        <div style="font-size:12px;color:var(--text-soft)">共 ${dates.length} 天有记录</div>
+      </div>
+    </div>
+    ${dates.map(date => {
+      const items = groups[date];
+      const done = items.filter(d => d.done).length;
+      const isToday = date === todayStr();
+      return `
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-head">
+          <div class="card-title" style="font-size:14px">${date} <span style="font-size:11px;color:var(--text-soft);font-weight:400">${fmtWeekday(parseDate(date))}${isToday?' · 今天':''}</span></div>
+          <div style="font-size:12px;color:${done===items.length?'var(--tag-green)':'var(--text-soft)'}">${done}/${items.length} 完成</div>
+        </div>
+        <div>
+          ${items.map(d => `
+            <div class="backup-item" style="padding:10px 0;align-items:flex-start;gap:12px;border-bottom:1px solid var(--border-soft)">
+              <input type="checkbox" ${d.done?'checked':''} onchange="toggleDaily('${d.id}')" style="width:17px;height:17px;margin-top:2px;accent-color:var(--accent);cursor:pointer">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:500;color:${d.done?'var(--text-mute)':'var(--text)'};text-decoration:${d.done?'line-through':'none'}">${d.title}</div>
+                ${d.note?`<div style="font-size:11px;color:var(--text-soft);margin-top:3px">${d.note}</div>`:''}
+              </div>
+              <div style="display:flex;gap:2px">
+                <button class="icon-btn" onclick="editDaily('${d.id}')" style="width:24px;height:24px;font-size:12px" title="编辑">✎</button>
+                <button class="icon-btn" onclick="delDaily('${d.id}')" style="width:24px;height:24px;font-size:12px" title="删除">🗑</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+}
+function toggleDaily(id) {
+  const d = data.dailyWork.find(x => x.id === id);
+  if (!d) return;
+  d.done = !d.done;
+  save(); renderDaily(); renderHomeDaily();
+}
+function delDaily(id) {
+  if (!confirm('确定删除该任务？')) return;
+  data.dailyWork = data.dailyWork.filter(d => d.id !== id);
+  save(); renderDaily(); renderHomeDaily(); showToast('已删除');
+}
+function openDailyModal(editId) {
+  const d = editId ? data.dailyWork.find(x => x.id === editId) : null;
+  const date = todayStr();
+  openModal(`
+    <div class="modal-title">${d?'编辑任务':'新增任务'}</div>
+    <div class="form-group"><label class="form-label">任务内容</label><input class="form-input" id="f_title" value="${d?d.title:''}" placeholder="如：拍摄 3 条信息流视频"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">日期</label><input class="form-input" type="date" id="f_date" value="${d?d.date:date}"></div>
+      <div class="form-group">
+        <label class="form-label">状态</label>
+        <select class="form-select" id="f_done">
+          <option value="false" ${d&&!d.done?'selected':''}>待完成</option>
+          <option value="true" ${d&&d.done?'selected':''}>已完成</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">备注（可选）</label><input class="form-input" id="f_note" value="${d?d.note:''}" placeholder="补充说明"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveDaily('${editId||''}')">保存</button>
+    </div>
+  `);
+}
+function saveDaily(id) {
+  const title = document.getElementById('f_title').value.trim();
+  if (!title) { showToast('请输入任务内容', '#C75B5B'); return; }
+  const obj = {
+    title,
+    date: document.getElementById('f_date').value,
+    done: document.getElementById('f_done').value === 'true',
+    note: document.getElementById('f_note').value.trim(),
+  };
+  if (id) Object.assign(data.dailyWork.find(d => d.id === id), obj);
+  else { obj.id = 'D' + data.seq.daily++; data.dailyWork.unshift(obj); }
+  save(); closeModal(); renderDaily(); renderHomeDaily(); showToast('已保存');
+}
+function editDaily(id) { openDailyModal(id); }
+
+// ===== 数据复盘 =====
+function renderReviews() {
+  const list = data.reviews;
+  const table = document.getElementById('reviewTable');
+  if (!list.length) { table.innerHTML = '<tr><td class="empty" colspan="8"><div class="empty-icon">📊</div>暂无复盘记录</td></tr>'; return; }
+  table.innerHTML = `<thead><tr><th>编号</th><th>内容</th><th>平台</th><th>发布日期</th><th>播放</th><th>点赞</th><th>收藏</th><th>操作</th></tr></thead><tbody>` +
+    list.map(r => `<tr>
+      <td style="color:var(--accent);font-family:Consolas,monospace;font-size:12px">${r.id}</td>
+      <td style="font-weight:500">${r.topicTitle}${r.conclusion?`<div style="font-size:11px;color:var(--text-soft);font-weight:400;margin-top:3px;max-width:300px">${r.conclusion}</div>`:'<div style="font-size:11px;color:var(--tag-red);margin-top:3px">待补充结论</div>'}</td>
+      <td>${r.platform}</td>
+      <td>${r.publishDate}</td>
+      <td>${r.views.toLocaleString()}</td>
+      <td>${r.likes}</td>
+      <td>${r.saves}</td>
+      <td><div class="row-actions">
+        <button class="icon-btn" onclick="editReview('${r.id}')" title="编辑">✎</button>
+        <button class="icon-btn" onclick="delReview('${r.id}')" title="删除">🗑</button>
+      </div></td>
+    </tr>`).join('') + '</tbody>';
+}
+function delReview(id) {
+  if (!confirm('确定删除该复盘？')) return;
+  data.reviews = data.reviews.filter(r => r.id !== id);
+  save(); renderReviews(); showToast('已删除');
+}
+
+// ===== 合作跟踪 =====
+let coopFilter = 'all';
+function renderCooperations() {
+  const toolbar = document.getElementById('coopToolbar');
+  const filters = [
+    {k:'all', label:'全部'}, {k:'进行中', label:'进行中'}, {k:'待交付', label:'待交付'},
+    {k:'待回款', label:'待回款'}, {k:'已完成', label:'已完成'}
+  ];
+  toolbar.innerHTML = filters.map(f => `<span class="filter-chip ${coopFilter===f.k?'active':''}" onclick="coopFilter='${f.k}';renderCooperations()">${f.label}</span>`).join('');
+
+  let list = data.cooperations;
+  if (coopFilter !== 'all') list = list.filter(c => c.status === coopFilter);
+
+  const grid = document.getElementById('coopGrid');
+  if (!list.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🤝</div>暂无合作</div>'; return; }
+  grid.innerHTML = list.map(c => `<div class="coop-card">
+    <div class="coop-head">
+      <div>
+        <div style="font-size:11px;color:var(--accent);font-family:Consolas,monospace">${c.id}</div>
+        <div class="coop-title">${c.title}</div>
+      </div>
+      <span class="task-status ${statusClass(c.status)}">${c.status}</span>
+    </div>
+    <div class="coop-amount">${c.amount.toLocaleString()}</div>
+    <div class="coop-meta">
+      <span>品牌：${c.brand}</span>
+      <span>平台：${c.platform}</span>
+      <span>交付：${c.deliverDate}</span>
+      <span style="color:${c.paymentStatus==='已回款'?'var(--tag-green)':'var(--tag-orange)'}">回款：${c.paymentStatus}</span>
+    </div>
+    <div style="font-size:11px;color:var(--text-soft);line-height:1.6;margin-bottom:12px">${c.communication}</div>
+    <div class="coop-actions">
+      <button class="task-action-btn" onclick="editCoop('${c.id}')">编辑</button>
+      ${c.paymentStatus!=='已回款'?`<button class="task-action-btn" onclick="markPaid('${c.id}')">标记回款</button>`:''}
+      <button class="task-action-btn" onclick="delCoop('${c.id}')">删除</button>
+    </div>
+  </div>`).join('');
+}
+function markPaid(id) {
+  const c = data.cooperations.find(x => x.id === id);
+  if (!c) return;
+  c.paymentStatus = '已回款'; c.status = '已完成';
+  save(); renderPage(currentPage()); showToast('已标记回款');
+}
+function delCoop(id) {
+  if (!confirm('确定删除该合作？')) return;
+  data.cooperations = data.cooperations.filter(c => c.id !== id);
+  save(); renderCooperations(); showToast('已删除');
+}
+
+// ===== 账号定位 =====
+function renderAccount() {
+  const a = data.account;
+  document.getElementById('accountGrid').innerHTML = `
+    <div class="card">
+      <div class="card-title" style="margin-bottom:14px">账号信息</div>
+      <div class="info-item"><span class="info-label">账号名称</span><span class="info-value">${a.name}</span></div>
+      <div class="info-item"><span class="info-label">运营平台</span><span class="info-value">${a.platforms.join('、')}</span></div>
+      <div class="info-item"><span class="info-label">目标受众</span><span class="info-value">${a.targetAudience}</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:14px">账号定位</div>
+      <div style="font-size:13px;line-height:1.7;color:var(--text);margin-bottom:14px">${a.positioning}</div>
+      <div class="info-label" style="font-size:12px;color:var(--text-soft)">内容方向</div>
+      <div class="keyword-list">${a.contentDirection.map(d=>`<span class="keyword-chip">${d}</span>`).join('')}</div>
+      <div class="info-label" style="font-size:12px;color:var(--text-soft);margin-top:16px">人设关键词</div>
+      <div class="keyword-list">${a.personaKeywords.map(k=>`<span class="keyword-chip">${k}</span>`).join('')}</div>
+    </div>
+    <div class="card" style="grid-column:1/-1">
+      <div class="card-title" style="margin-bottom:10px">平台分布</div>
+      <div class="platform-list">
+        <div class="platform-chip active">小红书 · ${a.platforms.includes('小红书')?'主阵地':'同步'}</div>
+        <div class="platform-chip active">抖音 · ${a.platforms.includes('抖音')?'主阵地':'同步'}</div>
+        <div class="platform-chip active">视频号 · ${a.platforms.includes('视频号')?'主阵地':'同步'}</div>
+      </div>
+    </div>
+  `;
+}
+
+// ===== 数据备份 =====
+function renderBackup() {
+  const s = stats();
+  const totalBackups = data.backups.length;
+  const archived = data.backups.filter(b => b.archived).length;
+  document.getElementById('backupStats').innerHTML = `
+    <div class="stat-card"><div class="stat-num">${totalBackups}</div><div class="stat-label">归档总数</div></div>
+    <div class="stat-card"><div class="stat-num">${archived}</div><div class="stat-label">已归档</div></div>
+    <div class="stat-card"><div class="stat-num">${s.completeness}<span class="unit">%</span></div><div class="stat-label">资料完整度</div></div>
+  `;
+  const list = document.getElementById('backupList');
+  if (!data.backups.length) { list.innerHTML = '<div class="empty">暂无归档记录</div>'; return; }
+  list.innerHTML = data.backups.map(b => `<div class="backup-item">
+    <div>
+      <div class="backup-name">${b.name}</div>
+      <div class="backup-date">${b.type} · ${b.date}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="backup-state ${b.archived?'ok':''}">${b.archived?'已归档':'未归档'}</span>
+      ${!b.archived?`<button class="task-action-btn" onclick="toggleBackup('${b.id}')">归档</button>`:`<button class="task-action-btn" onclick="toggleBackup('${b.id}')">取消</button>`}
+      <button class="icon-btn" onclick="delBackup('${b.id}')">🗑</button>
+    </div>
+  </div>`).join('');
+}
+function toggleBackup(id) {
+  const b = data.backups.find(x => x.id === id);
+  if (!b) return;
+  b.archived = !b.archived;
+  save(); renderBackup(); updateSidebarCompleteness(); showToast(b.archived?'已归档':'已取消归档');
+}
+function delBackup(id) {
+  data.backups = data.backups.filter(b => b.id !== id);
+  save(); renderBackup(); showToast('已删除');
+}
+
+// ===== 弹窗 =====
+function openModal(html) {
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
+
+function openTopicModal(editId) {
+  const t = editId ? data.topics.find(x => x.id === editId) : null;
+  openModal(`
+    <div class="modal-title">${t?'编辑选题':'新增选题'}</div>
+    <div class="form-group">
+      <label class="form-label">标题</label>
+      <input class="form-input" id="f_title" value="${t?t.title:''}" placeholder="一句话描述选题">
+    </div>
+    <div class="form-group">
+      <label class="form-label">描述</label>
+      <textarea class="form-textarea" id="f_desc" placeholder="选题背景、目标、形式…">${t?t.desc:''}</textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">标签（逗号分隔）</label>
+        <input class="form-input" id="f_tags" value="${t?t.tags.join(','):''}" placeholder="干货,工具">
+      </div>
+      <div class="form-group">
+        <label class="form-label">平台</label>
+        <select class="form-select" id="f_platform">
+          ${['小红书','抖音','视频号','公众号'].map(p=>`<option ${t&&t.platform===p?'selected':''}>${p}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">优先级</label>
+        <select class="form-select" id="f_priority">
+          ${['高','中','低'].map(p=>`<option ${t&&t.priority===p?'selected':''}>${p}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">状态</label>
+        <select class="form-select" id="f_status">
+          ${['待拍','拍摄中','待发布','已发布'].map(p=>`<option ${t&&t.status===p?'selected':''}>${p}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveTopic('${editId||''}')">保存</button>
+    </div>
+  `);
+}
+function saveTopic(id) {
+  const title = document.getElementById('f_title').value.trim();
+  if (!title) { showToast('请输入标题', '#C75B5B'); return; }
+  const obj = {
+    title, desc: document.getElementById('f_desc').value.trim(),
+    tags: document.getElementById('f_tags').value.split(/[,，]/).map(s=>s.trim()).filter(Boolean),
+    platform: document.getElementById('f_platform').value,
+    priority: document.getElementById('f_priority').value,
+    status: document.getElementById('f_status').value,
+  };
+  if (id) {
+    Object.assign(data.topics.find(t => t.id === id), obj);
+  } else {
+    obj.id = 'T' + data.seq.topic++;
+    obj.createdAt = new Date().toISOString().slice(0,10);
+    data.topics.unshift(obj);
+  }
+  save(); closeModal(); renderTopics(); showToast('已保存');
+}
+function editTopic(id) { openTopicModal(id); }
+
+function openReviewModal(editId) {
+  const r = editId ? data.reviews.find(x => x.id === editId) : null;
+  openModal(`
+    <div class="modal-title">${r?'编辑复盘':'新增复盘'}</div>
+    <div class="form-group">
+      <label class="form-label">内容标题</label>
+      <input class="form-input" id="f_title" value="${r?r.topicTitle:''}" placeholder="对应发布的内容标题">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">平台</label>
+        <select class="form-select" id="f_platform">
+          ${['小红书','抖音','视频号','公众号'].map(p=>`<option ${r&&r.platform===p?'selected':''}>${p}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">发布日期</label>
+        <input class="form-input" type="date" id="f_date" value="${r?r.publishDate:new Date().toISOString().slice(0,10)}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">播放量</label><input class="form-input" type="number" id="f_views" value="${r?r.views:0}"></div>
+      <div class="form-group"><label class="form-label">点赞</label><input class="form-input" type="number" id="f_likes" value="${r?r.likes:0}"></div>
+      <div class="form-group"><label class="form-label">收藏</label><input class="form-input" type="number" id="f_saves" value="${r?r.saves:0}"></div>
+      <div class="form-group"><label class="form-label">评论</label><input class="form-input" type="number" id="f_comments" value="${r?r.comments:0}"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">复盘结论</label>
+      <textarea class="form-textarea" id="f_conclusion" placeholder="内容表现如何？哪些可复用？哪些要改进？">${r?r.conclusion:''}</textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveReview('${editId||''}')">保存</button>
+    </div>
+  `);
+}
+function saveReview(id) {
+  const title = document.getElementById('f_title').value.trim();
+  if (!title) { showToast('请输入内容标题', '#C75B5B'); return; }
+  const obj = {
+    topicTitle: title,
+    platform: document.getElementById('f_platform').value,
+    publishDate: document.getElementById('f_date').value,
+    views: +document.getElementById('f_views').value,
+    likes: +document.getElementById('f_likes').value,
+    saves: +document.getElementById('f_saves').value,
+    comments: +document.getElementById('f_comments').value,
+    conclusion: document.getElementById('f_conclusion').value.trim(),
+  };
+  if (id) Object.assign(data.reviews.find(r => r.id === id), obj);
+  else { obj.id = 'R' + data.seq.review++; data.reviews.unshift(obj); }
+  save(); closeModal(); renderReviews(); showToast('已保存');
+}
+function editReview(id) { openReviewModal(id); }
+
+function openCoopModal(editId) {
+  const c = editId ? data.cooperations.find(x => x.id === editId) : null;
+  openModal(`
+    <div class="modal-title">${c?'编辑合作':'新增合作'}</div>
+    <div class="form-group"><label class="form-label">合作标题</label><input class="form-input" id="f_title" value="${c?c.title:''}"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">品牌方</label><input class="form-input" id="f_brand" value="${c?c.brand:''}"></div>
+      <div class="form-group"><label class="form-label">金额（元）</label><input class="form-input" type="number" id="f_amount" value="${c?c.amount:0}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">平台</label>
+        <select class="form-select" id="f_platform">
+          ${['小红书','抖音','视频号','公众号'].map(p=>`<option ${c&&c.platform===p?'selected':''}>${p}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">交付日期</label><input class="form-input" type="date" id="f_date" value="${c?c.deliverDate:''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">状态</label>
+        <select class="form-select" id="f_status">
+          ${['待沟通','进行中','待交付','待回款','已完成'].map(s=>`<option ${c&&c.status===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">回款状态</label>
+        <select class="form-select" id="f_pay">
+          ${['未回款','预付款已收','已回款'].map(s=>`<option ${c&&c.paymentStatus===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">沟通记录</label><textarea class="form-textarea" id="f_comm">${c?c.communication:''}</textarea></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveCoop('${editId||''}')">保存</button>
+    </div>
+  `);
+}
+function saveCoop(id) {
+  const title = document.getElementById('f_title').value.trim();
+  if (!title) { showToast('请输入合作标题', '#C75B5B'); return; }
+  const obj = {
+    title, brand: document.getElementById('f_brand').value.trim(),
+    amount: +document.getElementById('f_amount').value,
+    platform: document.getElementById('f_platform').value,
+    deliverDate: document.getElementById('f_date').value,
+    status: document.getElementById('f_status').value,
+    paymentStatus: document.getElementById('f_pay').value,
+    communication: document.getElementById('f_comm').value.trim(),
+  };
+  if (id) Object.assign(data.cooperations.find(c => c.id === id), obj);
+  else { obj.id = 'C' + data.seq.coop++; data.cooperations.unshift(obj); }
+  save(); closeModal(); renderCooperations(); showToast('已保存');
+}
+function editCoop(id) { openCoopModal(id); }
+
+function editAccount() {
+  const a = data.account;
+  openModal(`
+    <div class="modal-title">编辑账号定位</div>
+    <div class="form-group"><label class="form-label">账号名称</label><input class="form-input" id="f_name" value="${a.name}"></div>
+    <div class="form-group"><label class="form-label">运营平台（逗号分隔）</label><input class="form-input" id="f_platforms" value="${a.platforms.join(',')}"></div>
+    <div class="form-group"><label class="form-label">一句话定位</label><input class="form-input" id="f_pos" value="${a.positioning}"></div>
+    <div class="form-group"><label class="form-label">内容方向（逗号分隔）</label><input class="form-input" id="f_dir" value="${a.contentDirection.join(',')}"></div>
+    <div class="form-group"><label class="form-label">人设关键词（逗号分隔）</label><input class="form-input" id="f_keys" value="${a.personaKeywords.join(',')}"></div>
+    <div class="form-group"><label class="form-label">目标受众</label><input class="form-input" id="f_aud" value="${a.targetAudience}"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveAccount()">保存</button>
+    </div>
+  `);
+}
+function saveAccount() {
+  data.account = {
+    name: document.getElementById('f_name').value.trim(),
+    platforms: document.getElementById('f_platforms').value.split(/[,，]/).map(s=>s.trim()).filter(Boolean),
+    positioning: document.getElementById('f_pos').value.trim(),
+    contentDirection: document.getElementById('f_dir').value.split(/[,，]/).map(s=>s.trim()).filter(Boolean),
+    personaKeywords: document.getElementById('f_keys').value.split(/[,，]/).map(s=>s.trim()).filter(Boolean),
+    targetAudience: document.getElementById('f_aud').value.trim(),
+  };
+  save(); closeModal(); renderAccount(); showToast('已保存');
+}
+
+function openBackupModal() {
+  openModal(`
+    <div class="modal-title">新增归档</div>
+    <div class="form-group"><label class="form-label">归档名称</label><input class="form-input" id="f_name" placeholder="如：9月素材归档"></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">类型</label>
+        <select class="form-select" id="f_type">
+          <option>视频素材</option><option>合同文件</option><option>数据表</option><option>其他</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">归档日期</label><input class="form-input" type="date" id="f_date" value="${new Date().toISOString().slice(0,10)}"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveBackup()">保存</button>
+    </div>
+  `);
+}
+function saveBackup() {
+  const name = document.getElementById('f_name').value.trim();
+  if (!name) { showToast('请输入归档名称', '#C75B5B'); return; }
+  data.backups.unshift({
+    id: 'B' + data.seq.backup++, name,
+    type: document.getElementById('f_type').value,
+    date: document.getElementById('f_date').value,
+    archived: false
+  });
+  save(); closeModal(); renderBackup(); showToast('已保存');
+}
+
+// ===== 导入导出 =====
+function exportData() {
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `自媒体工作台_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  showToast('数据已导出');
+}
+function importData() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        data = JSON.parse(ev.target.result);
+        save(); renderPage(currentPage()); showToast('数据已导入');
+      } catch(err) { showToast('文件格式错误', '#C75B5B'); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+// ===== Toast =====
+function showToast(msg, color) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = color || 'var(--text)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ===== 悬停预览浮层 =====
+const tooltip = document.createElement('div');
+tooltip.className = 'script-tooltip';
+document.body.appendChild(tooltip);
+document.addEventListener('mouseover', e => {
+  const row = e.target.closest('.script-row');
+  if (!row) { tooltip.classList.remove('show'); return; }
+  const html = decodeURIComponent(row.dataset.preview || '');
+  tooltip.innerHTML = html;
+  tooltip.classList.add('show');
+});
+document.addEventListener('mousemove', e => {
+  if (!tooltip.classList.contains('show')) return;
+  const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
+  let x = e.clientX + 16, y = e.clientY + 16;
+  if (x + tw > window.innerWidth) x = e.clientX - tw - 16;
+  if (y + th > window.innerHeight) y = e.clientY - th - 16;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top = y + 'px';
+});
+document.addEventListener('mouseout', e => {
+  if (!e.target.closest('.script-row')) tooltip.classList.remove('show');
+});
+
+// ===== 初始化 =====
+renderHome();
+updateSidebarCompleteness();
+startWorkCountdown();
+</script>
+</body>
+</html>
