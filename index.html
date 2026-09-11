@@ -491,9 +491,13 @@
       <div class="nav-item" data-page="cooperations"><span class="num">08</span>合作跟踪</div>
     </div>
     <div class="nav-group">
+      <div class="nav-group-title">身心健康</div>
+      <div class="nav-item" data-page="health"><span class="num">09</span>健康打卡</div>
+    </div>
+    <div class="nav-group">
       <div class="nav-group-title">战略沉淀</div>
-      <div class="nav-item" data-page="account"><span class="num">09</span>账号定位</div>
-      <div class="nav-item" data-page="backup"><span class="num">10</span>数据备份</div>
+      <div class="nav-item" data-page="account"><span class="num">10</span>账号定位</div>
+      <div class="nav-item" data-page="backup"><span class="num">11</span>数据备份</div>
     </div>
 
     <div class="sidebar-footer">
@@ -783,6 +787,47 @@
         </div>
       </div>
 
+      <!-- 健康打卡 -->
+      <div class="page" id="page-health">
+        <div class="page-head">
+          <div>
+            <div class="page-title">健康打卡</div>
+            <div class="page-desc">每小时提醒喝水、起身，保持健康工作习惯。</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+          <div class="card" style="text-align:center">
+            <div class="card-head" style="justify-content:center"><div class="card-title">💧 今日饮水</div></div>
+            <div id="waterRing" style="margin:8px auto 12px"></div>
+            <div id="waterStats" style="font-size:13px;color:var(--text-soft);margin-bottom:16px"></div>
+            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+              <button class="btn btn-primary" style="padding:10px 20px;font-size:14px" onclick="addWater(150)">🥤 150ml</button>
+              <button class="btn btn-primary" style="padding:10px 20px;font-size:14px" onclick="addWater(400)">☕ 400ml</button>
+              <button class="btn btn-primary" style="padding:10px 20px;font-size:14px" onclick="addWater(600)">🥛 600ml</button>
+            </div>
+          </div>
+          <div class="card" style="text-align:center">
+            <div class="card-head" style="justify-content:center"><div class="card-title">🧘 今日起身</div></div>
+            <div id="standRing" style="margin:8px auto 12px"></div>
+            <div id="standStats" style="font-size:13px;color:var(--text-soft);margin-bottom:16px"></div>
+            <button class="btn btn-primary" style="padding:10px 28px;font-size:14px" onclick="addStand()">🧘 起身打卡</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">📈 近7天趋势</div>
+          </div>
+          <div id="healthTrend"></div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">📋 今日打卡记录</div>
+            <button class="btn" style="font-size:11px" onclick="undoLastHealth()">撤销最近一次</button>
+          </div>
+          <div id="healthLog"></div>
+        </div>
+      </div>
+
       <!-- 日历备忘 -->
       <div class="page" id="page-calendar">
         <div class="page-head">
@@ -910,7 +955,12 @@ const defaultData = {
   memos: {},
   hotspots: { date: '', items: [] },
   dailyCopyGen: { date: '', style: '', count: 0 },
-  lastDupCheck: ''
+  lastDupCheck: '',
+  health: {
+    waterGoal: 1500,
+    standGoal: 8,
+    records: {} // { 'YYYY-MM-DD': { water: [{time, amount}], stand: [{time}] } }
+  }
 };
 
 function load() {
@@ -942,6 +992,10 @@ function load() {
     if (!merged.hotspots) merged.hotspots = { date: '', items: [] };
     if (!merged.dailyCopyGen) merged.dailyCopyGen = { date: '', style: '', count: 0 };
     if (!merged.lastDupCheck) merged.lastDupCheck = '';
+    if (!merged.health) merged.health = { waterGoal: 1500, standGoal: 8, records: {} };
+    if (!merged.health.records) merged.health.records = {};
+    if (!merged.health.waterGoal) merged.health.waterGoal = 1500;
+    if (!merged.health.standGoal) merged.health.standGoal = 8;
     return merged;
   }
   catch(e) { return JSON.parse(JSON.stringify(defaultData)); }
@@ -960,7 +1014,8 @@ const pageMeta = {
   daily: {title:'工作归档', sub:'按周/月/年翻阅历史工作记录，回顾本周本月做了什么。'},
   cooperations: {title:'合作跟踪', sub:'商业合作从沟通到回款的全流程管理。'},
   account: {title:'账号定位', sub:'明确你的人设、内容方向和目标受众。'},
-  backup: {title:'数据备份', sub:'资料归档与完整度跟踪，避免素材丢失。'}
+  backup: {title:'数据备份', sub:'资料归档与完整度跟踪，避免素材丢失。'},
+  health: {title:'健康打卡', sub:'喝水、起身活动打卡，每小时提醒，保持健康工作习惯。'}
 };
 document.querySelectorAll('.nav-item').forEach(item => {
   item.addEventListener('click', () => {
@@ -986,6 +1041,7 @@ function renderPage(p) {
   else if (p === 'cooperations') renderCooperations();
   else if (p === 'account') renderAccount();
   else if (p === 'backup') renderBackup();
+  else if (p === 'health') renderHealth();
 }
 
 // ===== 统计 =====
@@ -3007,6 +3063,173 @@ function renderAccount() {
 }
 
 // ===== 数据备份 =====
+// ===== 健康打卡 =====
+function getTodayHealth() {
+  var today = todayStr();
+  if (!data.health.records[today]) {
+    data.health.records[today] = { water: [], stand: [] };
+  }
+  return data.health.records[today];
+}
+function makeRingSVG(pct, color, label, sub) {
+  var r = 52, c = 2 * Math.PI * r;
+  var offset = c * (1 - pct / 100);
+  return '<svg width="140" height="140" viewBox="0 0 140 140" style="display:block">' +
+    '<circle cx="70" cy="70" r="' + r + '" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="10"/>' +
+    '<circle cx="70" cy="70" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="10" ' +
+    'stroke-linecap="round" stroke-dasharray="' + c + '" stroke-dashoffset="' + offset + '" ' +
+    'transform="rotate(-90 70 70)" style="transition:stroke-dashoffset 0.5s var(--ease)"/>' +
+    '<text x="70" y="66" text-anchor="middle" font-size="22" font-weight="700" fill="var(--text)">' + label + '</text>' +
+    '<text x="70" y="86" text-anchor="middle" font-size="11" fill="var(--text-soft)">' + sub + '</text>' +
+    '</svg>';
+}
+function renderHealth() {
+  var rec = getTodayHealth();
+  var waterTotal = rec.water.reduce(function(s, w) { return s + w.amount; }, 0);
+  var standCount = rec.stand.length;
+  var waterPct = Math.min(100, Math.round(waterTotal / data.health.waterGoal * 100));
+  var standPct = Math.min(100, Math.round(standCount / data.health.standGoal * 100));
+  var waterColor = waterPct >= 100 ? 'var(--tag-green)' : 'var(--tag-blue)';
+  var standColor = standPct >= 100 ? 'var(--tag-green)' : 'var(--tag-orange)';
+
+  var waterRing = document.getElementById('waterRing');
+  var standRing = document.getElementById('standRing');
+  if (waterRing) waterRing.innerHTML = makeRingSVG(waterPct, waterColor, waterTotal + 'ml', waterPct + '% of ' + data.health.waterGoal + 'ml');
+  if (standRing) standRing.innerHTML = makeRingSVG(standPct, standColor, standCount + '次', standPct + '% of ' + data.health.standGoal + '次');
+
+  var waterStats = document.getElementById('waterStats');
+  if (waterStats) {
+    var remain = data.health.waterGoal - waterTotal;
+    waterStats.innerHTML = waterPct >= 100 ? '<span style="color:var(--tag-green);font-weight:600">✅ 今日饮水目标已达成！</span>'
+      : '还需 <b style="color:var(--text)">' + remain + 'ml</b> 达成今日目标';
+  }
+  var standStats = document.getElementById('standStats');
+  if (standStats) {
+    var remainS = data.health.standGoal - standCount;
+    standStats.innerHTML = standPct >= 100 ? '<span style="color:var(--tag-green);font-weight:600">✅ 今日起身目标已达成！</span>'
+      : '还需 <b style="color:var(--text)">' + remainS + '次</b> 达成今日目标';
+  }
+
+  // 今日记录
+  var log = document.getElementById('healthLog');
+  if (log) {
+    var all = [];
+    rec.water.forEach(function(w) { all.push({ type: '💧', text: '饮水 ' + w.amount + 'ml', time: w.time }); });
+    rec.stand.forEach(function(s) { all.push({ type: '🧘', text: '起身活动', time: s.time }); });
+    all.sort(function(a, b) { return b.time.localeCompare(a.time); });
+    if (all.length === 0) {
+      log.innerHTML = '<div class="empty" style="padding:24px"><div class="empty-icon" style="font-size:26px;margin-bottom:8px">📝</div>今日还没打卡，点上方按钮开始记录</div>';
+    } else {
+      log.innerHTML = all.map(function(r) {
+        return '<div class="backup-item" style="padding:10px 0">' +
+          '<div><div class="backup-name">' + r.type + ' ' + r.text + '</div><div class="backup-date">' + r.time + '</div></div>' +
+          '</div>';
+      }).join('');
+    }
+  }
+
+  // 近7天趋势
+  var trend = document.getElementById('healthTrend');
+  if (trend) {
+    var days = [];
+    for (var i = 6; i >= 0; i--) {
+      var d = new Date();
+      d.setDate(d.getDate() - i);
+      var ds = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      var dr = data.health.records[ds] || { water: [], stand: [] };
+      var wt = dr.water.reduce(function(s, w) { return s + w.amount; }, 0);
+      var sc = dr.stand.length;
+      days.push({ date: ds, water: wt, stand: sc });
+    }
+    var maxWater = Math.max(data.health.waterGoal, ...days.map(function(d) { return d.water; }));
+    var maxStand = Math.max(data.health.standGoal, ...days.map(function(d) { return d.stand; }));
+    trend.innerHTML = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">' +
+      '<div><div style="font-size:12px;color:var(--text-soft);margin-bottom:10px">💧 饮水量 (ml)</div>' + days.map(function(d) {
+        var h = Math.round(d.water / maxWater * 80);
+        var isToday = d.date === todayStr();
+        return '<div style="display:flex;align-items:flex-end;gap:6px;margin-bottom:6px">' +
+          '<div style="width:28px;height:' + (h + 12) + 'px;background:' + (d.water >= data.health.waterGoal ? 'var(--tag-green)' : 'var(--tag-blue)') + ';border-radius:6px;opacity:' + (isToday ? '1' : '0.7') + '"></div>' +
+          '<div><div style="font-size:11px;color:var(--text)">' + d.water + '</div><div style="font-size:9px;color:var(--text-mute)">' + d.date.slice(5) + '</div></div>' +
+          '</div>';
+      }).join('') + '</div>' +
+      '<div><div style="font-size:12px;color:var(--text-soft);margin-bottom:10px">🧘 起身次数</div>' + days.map(function(d) {
+        var h = Math.round(d.stand / maxStand * 80);
+        var isToday = d.date === todayStr();
+        return '<div style="display:flex;align-items:flex-end;gap:6px;margin-bottom:6px">' +
+          '<div style="width:28px;height:' + (h + 12) + 'px;background:' + (d.stand >= data.health.standGoal ? 'var(--tag-green)' : 'var(--tag-orange)') + ';border-radius:6px;opacity:' + (isToday ? '1' : '0.7') + '"></div>' +
+          '<div><div style="font-size:11px;color:var(--text)">' + d.stand + '次</div><div style="font-size:9px;color:var(--text-mute)">' + d.date.slice(5) + '</div></div>' +
+          '</div>';
+      }).join('') + '</div>' +
+      '</div>';
+  }
+}
+function addWater(amount) {
+  var rec = getTodayHealth();
+  var now = new Date();
+  rec.water.push({ time: String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'), amount: amount });
+  save();
+  renderHealth();
+  var total = rec.water.reduce(function(s, w) { return s + w.amount; }, 0);
+  if (total >= data.health.waterGoal) {
+    showToast('🎉 今日饮水目标已达成 ' + total + 'ml！', '#34C759');
+  } else {
+    showToast('💧 已记录 ' + amount + 'ml，今日累计 ' + total + 'ml / ' + data.health.waterGoal + 'ml', '#007AFF');
+  }
+}
+function addStand() {
+  var rec = getTodayHealth();
+  var now = new Date();
+  rec.stand.push({ time: String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') });
+  save();
+  renderHealth();
+  if (rec.stand.length >= data.health.standGoal) {
+    showToast('🎉 今日起身目标已达成 ' + rec.stand.length + ' 次！', '#34C759');
+  } else {
+    showToast('🧘 已打卡，今日起身 ' + rec.stand.length + ' / ' + data.health.standGoal + ' 次', '#FF9500');
+  }
+}
+function undoLastHealth() {
+  var rec = getTodayHealth();
+  // 找最近的一条记录（water 或 stand 中时间最大的）
+  var lastW = rec.water.length > 0 ? rec.water[rec.water.length - 1] : null;
+  var lastS = rec.stand.length > 0 ? rec.stand[rec.stand.length - 1] : null;
+  if (!lastW && !lastS) { showToast('今日没有可撤销的记录', '#555555'); return; }
+  if (lastW && (!lastS || lastW.time >= lastS.time)) {
+    rec.water.pop();
+    showToast('已撤销最近一次饮水记录');
+  } else {
+    rec.stand.pop();
+    showToast('已撤销最近一次起身记录');
+  }
+  save();
+  renderHealth();
+}
+// 每小时健康提醒（喝水+起身）
+let lastHealthHour = -1;
+function startHealthReminder() {
+  setInterval(function() {
+    var now = new Date();
+    var day = now.getDay();
+    if (day === 0 || day === 6) return;
+    var nowMin = now.getHours() * 60 + now.getMinutes();
+    var inWork = (nowMin >= WORK.start && nowMin < WORK.lunchStart) || (nowMin >= WORK.lunchEnd && nowMin < WORK.goal);
+    if (!inWork) return;
+    if (now.getMinutes() !== 0) return;
+    var hour = now.getHours();
+    if (hour === lastHealthHour) return;
+    lastHealthHour = hour;
+    var rec = getTodayHealth();
+    var waterTotal = rec.water.reduce(function(s, w) { return s + w.amount; }, 0);
+    var standCount = rec.stand.length;
+    var waterRemain = data.health.waterGoal - waterTotal;
+    var standRemain = data.health.standGoal - standCount;
+    var msg = '💧 该喝水了！今日已饮 ' + waterTotal + 'ml';
+    if (waterRemain > 0) msg += '，还差 ' + waterRemain + 'ml';
+    msg += ' | 🧘 记得起身活动，今日已起身 ' + standCount + ' 次';
+    showToast(msg, '#007AFF');
+  }, 30000);
+}
+
 function renderBackup() {
   const s = stats();
   const totalBackups = data.backups.length;
@@ -3347,6 +3570,7 @@ document.addEventListener('mouseout', e => {
 renderHome();
 updateSidebarCompleteness();
 startWorkCountdown();
+startHealthReminder();
 // 每日自动查重
 (function() {
   if (data.lastDupCheck !== localDateStr()) {
