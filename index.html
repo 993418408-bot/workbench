@@ -960,7 +960,8 @@ const defaultData = {
     waterGoal: 1500,
     standGoal: 8,
     records: {} // { 'YYYY-MM-DD': { water: [{time, amount}], stand: [{time}] } }
-  }
+  },
+  aiChat: [] // 豆花聊天记录（近3天），{role, content, ts}
 };
 
 function load() {
@@ -996,6 +997,7 @@ function load() {
     if (!merged.health.records) merged.health.records = {};
     if (!merged.health.waterGoal) merged.health.waterGoal = 1500;
     if (!merged.health.standGoal) merged.health.standGoal = 8;
+    if (!Array.isArray(merged.aiChat)) merged.aiChat = [];
     return merged;
   }
   catch(e) { return JSON.parse(JSON.stringify(defaultData)); }
@@ -1417,11 +1419,38 @@ function renderHomeDailyTimers() {
 let aiChatHistory = []; // {role, content: 字符串 或 多模态数组}
 let pendingImages = [];  // 待发送图片 dataURL
 
+// ===== 产品知识库（来源：华火产品清单2026.3.4） =====
+const PRODUCT_KB = [
+'【通用核心技术，全系标配】等离子电火技术，插电生明火；无需天然气/液化气；风扇散热故障检测芯片；防爆玻璃面板；220V民用电 50Hz；火焰温度约1300℃烈焰明火（DQ20Pro为1200℃）。',
+'【单灶】',
+'1. DQ20Pro（HH-DQ20Pro）¥2880：可台式可嵌入 | 2500W | 热效率78.4% | 三档旋钮1000/2000/2500W | 60分钟自动熄火 | 华火唯一相位交错技术 | 圆型护焰封闭锅圈 | 智能炫彩屏（实时功率/累计用电量） | 净重11kg | 机身400×440×175.5mm | 开孔365×410预留高100 | 9色：可乐红/星空黑/曜石黑/金红紫/幻彩蓝/粉红色/幻彩金/幻彩锻红/铁灰色',
+'2. U7（HH-U7）¥2399：台式不可嵌入 | 3000W | 热效率81.5% | 无极档位（小中大） | 30分钟自动熄火 | 史上最薄最轻最静音 | 创新弧形聚能锅圈 | 净重7kg | 机身425×317×152mm | 4色：墨玉黑/星岩灰/曜金彩/鎏金玉',
+'3. U7Pro精控大师版（HH-U7Pro）¥2499：同U7配置 + 智能炫彩数码屏 | 仅墨玉黑',
+'4. MiniX1（MiniX1）¥2380：台式不可嵌入 | 3000W | 热效率81.5% | 三档旋钮（大中小） | 60分钟自动熄火 | 性价比之王 | 净重约8kg | 机身512×345×135mm | 8色：曜影黑/极光白/鎏金黄/松影绿/幻影紫/钛空灰/苍穹蓝/太极黑',
+'5. 旋钮款P5pro（HH-DTQP5pro）¥3180：可台式可嵌入 | 3000W | 热效率81.5% | 三档旋钮 | 60分钟自动熄火 | 圆型护焰封闭锅圈 | 智能炫彩屏 | 净重16.2kg | 机身600×457×168mm | 开孔575×430预留高119',
+'6. 触摸款TP6（HH-DCQTP6）¥3480：可台式可嵌入 | 3000W | 热效率81.5% | 触屏/APP蓝牙调节 | 60分钟自动熄火 | 圆型护焰封闭锅圈 | 智能炫彩屏 | 净重16.4kg | 机身600×457×168mm | 开孔575×430预留高119',
+'【组合灶：电火灶+电陶炉，明火暗火一灶搞定】',
+'7. U8（HH-U8）¥3480：总功率3500W（电火灶3000W+电陶炉2000W） | 热效率81.5% | 三档旋钮 | 30分钟自动熄火 | 弧形聚能锅圈 | 净重约13kg | 机身740×370×188mm | 开孔650×340预留高120 | 4色：墨玉黑/星岩灰/曜金彩/鎏金玉',
+'8. U8Pro（HH-U8Pro）¥3980：同U8 + 可设10/30/60分钟定时 + 智能炫彩屏 | 仅墨玉黑',
+'9. 旋钮款P60（HH-SZQP60）¥4399：总功率3500W（电火灶3000W+电陶炉2200W） | 三档旋钮 | 60分钟自动熄火 | 圆型护焰封闭锅圈 | 智能炫彩屏 | 净重19.1kg | 底壳760×430×185.5mm | 开孔725×400预留高130',
+'10. 触摸款P60pro（HH-SZQP60pro）¥4549：同P60功率 + 触屏调节 | 净重18.7kg | 机身760×430×185.5mm',
+'【双喷火灶：双区独立明火，左右灶各3000W共6000W】',
+'11. 台式U9（HH-U9）¥4480：热效率81.5% | 无极火力调节 | 30分钟自动熄火 | 弧形聚能锅圈 | 净重14kg | 机身681×427×135mm | 4色：墨玉黑/星岩灰/曜金彩/鎏金玉',
+'12. 台式U9Pro（HH-U9Pro）¥4980：同U9 + 智能炫彩屏 | 仅墨玉黑',
+'13. 嵌入U10Pro（HH-U10Pro）¥5180：嵌入式 | 三档火力+10/30/60分钟定时 | 30分钟自动熄火 | 智能炫彩屏 | 净重18kg | 机身740×430×207mm | 开孔655×370预留高140',
+'【商用灶】',
+'14. P50S（HH-SDTQP50S）¥5380：5000W | 无极火力调节 | 60分钟自动熄火 | 铸铁锅圈 | 智能炫彩屏 | 净重22.7kg | 机身760×430×192mm | 开孔725×400预留高130',
+'15. 商用电火灶10000W（HH-S1PJ4）¥38800：10000W | 不锈钢+铸铁 | 按键/APP蓝牙/语音调节 | 净重93.5kg | 底壳1000×1130×1120mm | 木架固定发货'
+];
+function productKBText() { return PRODUCT_KB.join('\n'); }
+// 精简版（批量生成用：型号+价格+一句话卖点）
+const PRODUCT_KB_BRIEF = PRODUCT_KB.join('\n');
 const AI_SYSTEM_PROMPT = [
 '你是华焰天下电火灶品牌部的AI助手，名字叫「Huahuo 豆花」，服务对象是品牌部拍摄剪辑师A总。A总制作电火灶信息流视频（抖音/小红书/视频号分发给经销商）和口播产品宣传视频。',
 '回答规则：',
 '1. 每次回答开头自然称呼"A总"（如"A总，……"），结尾不加称呼',
-'2. 热点/选题/文案：给具体可执行的建议，符合信息流调性；产品参数基于事实不编造；禁绝对化用语（最/第一/100%）和标题党',
+'2. 热点/选题/文案：给具体可执行的建议，符合信息流调性；禁绝对化用语（最/第一/100%）和标题党',
+'2.5 【产品知识库】下方附有华火全系15款产品的真实参数（型号/功率/价格/尺寸/卖点）。A总问到产品时必须精确引用知识库参数回答，绝不允许编造型号、价格、功率、尺寸；知识库没有的信息要如实说明。推荐产品时结合A总的使用场景（如拍摄道具、家用、商用）给出具体型号和理由。',
 '3. A总可能发来图片（封面、成片截图、数据表、竞品截图等）或网页链接（你会看到链接的真实抓取正文）：请像真人助理一样先看图、先读内容再分析，不要假装看不到；图片看不清或信息不足要如实说',
 '4. 简洁实用，短段落，重点加【】，一般不超过300字；图片/链接分析可适当展开',
 '5. 【记录能力】只有当A总明确要求"记一下/记录/新增到/存入"备忘、文案库、选题、复盘、任务时，才在正常回复的最后另起一行输出一个动作块；没有记录意图时绝不要输出。格式严格如下：',
@@ -1446,14 +1475,44 @@ function aiMessageDisplay(m) {
   });
   return { text, imgs };
 }
+
+// ---- 聊天记录持久化（保留近3天） ----
+const AI_CHAT_DAYS = 3;
+function persistableMsg(m) {
+  let content = m.content;
+  if (Array.isArray(content)) {
+    // 图片不入库（dataURL 太大），替换为占位文本
+    const text = content.filter(p => p.type === 'text').map(p => p.text).join('\n');
+    content = (content.some(p => p.type === 'image_url') ? '🖼【附带图片】\n' : '') + text;
+  }
+  if (typeof content === 'string' && content.length > 3000) content = content.slice(0, 3000) + '…';
+  return { role: m.role, content, ts: m.ts || Date.now() };
+}
+function saveAiChat() {
+  const cutoff = Date.now() - AI_CHAT_DAYS * 24 * 3600 * 1000;
+  data.aiChat = aiChatHistory.filter(m => (m.ts || 0) >= cutoff).slice(-200).map(persistableMsg);
+  save();
+}
+function initAiChat() {
+  const cutoff = Date.now() - AI_CHAT_DAYS * 24 * 3600 * 1000;
+  aiChatHistory = (data.aiChat || []).filter(m => (m.ts || 0) >= cutoff).map(m => ({ role: m.role, content: m.content, ts: m.ts }));
+}
+function aiDateLabel(ts) {
+  const d = new Date(ts);
+  return `${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
 function renderAiLog(extra) {
   const log = document.getElementById('aiChatLog');
   if (!log) return;
-  log.innerHTML = aiChatHistory.map(m => {
+  let lastDay = '';
+  log.innerHTML = (aiChatHistory.length ? aiChatHistory.map(m => {
     const d = aiMessageDisplay(m);
+    const day = m.ts ? new Date(m.ts).toDateString() : '';
+    const sep = (day && day !== lastDay) ? `<div style="text-align:center;font-size:11px;color:rgba(255,255,255,.75);margin:10px 0 6px">— ${m.ts ? aiDateLabel(m.ts).split(' ')[0] : ''} —</div>` : '';
+    if (day) lastDay = day;
     const tag = d.imgs ? `<div style="font-size:11px;opacity:.7;margin-bottom:3px">🖼 图片 ×${d.imgs}</div>` : '';
-    return `<div class="ai-msg ${m.role==='user'?'user':'bot'}">${tag}${escHtml(d.text).replace(/\n/g,'<br>')}</div>`;
-  }).join('') + (extra || '');
+    return `${sep}<div class="ai-msg ${m.role==='user'?'user':'bot'}" ${m.ts?`title="${aiDateLabel(m.ts)}"`:''}>${tag}${escHtml(d.text).replace(/\n/g,'<br>')}</div>`;
+  }).join('') : '<div class="ai-msg bot">A总好，我是 Huahuo 豆花 💬 能看图、读链接、聊产品参数，也能帮您记录到备忘/文案库/选题/复盘。现在聊天记录会保留近3天。</div>') + (extra || '');
   log.scrollTop = log.scrollHeight;
 }
 
@@ -1584,7 +1643,7 @@ async function askAI(presetQuestion) {
     netImages.forEach(u => userContent.push({ type:'image_url', image_url:{ url:u } }));
   }
 
-  aiChatHistory.push({ role:'user', content: userContent });
+  aiChatHistory.push({ role:'user', content: userContent, ts: Date.now() });
   renderAiLog('<div class="ai-msg bot thinking">Huahuo 豆花思考中…</div>');
 
   try {
@@ -1594,7 +1653,7 @@ async function askAI(presetQuestion) {
       body: JSON.stringify({
         model: cfg.model,
         messages: [
-          { role: 'system', content: AI_SYSTEM_PROMPT + '\n\n【当前真实日期】今天是 ' + todayCn() + '。A总说"今天/明天/后天/周X"时，一律按此日期换算成 YYYY-MM-DD。' },
+          { role: 'system', content: AI_SYSTEM_PROMPT + '\n\n【华火产品知识库（真实参数，回答必须以此为准）】\n' + productKBText() + '\n\n【当前真实日期】今天是 ' + todayCn() + '。A总说"今天/明天/后天/周X"时，一律按此日期换算成 YYYY-MM-DD。' },
           ...aiChatHistory.slice(-8)
         ],
         temperature: 0.8,
@@ -1606,11 +1665,13 @@ async function askAI(presetQuestion) {
     const json = await resp.json();
     const raw = json.choices?.[0]?.message?.content || '（无返回内容）';
     const parsed = parseAction(raw);
-    aiChatHistory.push({ role: 'assistant', content: parsed.reply || 'A总，已按您的要求准备好记录。' });
+    aiChatHistory.push({ role: 'assistant', content: parsed.reply || 'A总，已按您的要求准备好记录。', ts: Date.now() });
+    saveAiChat();
     renderAiLog();
     if (parsed.action) openActionConfirm(parsed.action);
   } catch(e) {
-    aiChatHistory.push({ role: 'assistant', content: '⚠️ 请求失败：' + e.message + '\n请确认已运行 启动工作台.bat' });
+    aiChatHistory.push({ role: 'assistant', content: '⚠️ 请求失败：' + e.message + '\n请确认已运行 启动工作台.bat', ts: Date.now() });
+    saveAiChat();
     renderAiLog();
   }
 }
@@ -1881,7 +1942,7 @@ async function genHotspots() {
       body: JSON.stringify({
         model: cfg.model,
         messages: [
-          { role: 'system', content: '你是抖音热点选题顾问。基于你对近期抖音内容生态的了解，输出当前热门的内容方向/话题/形式（生活、厨房、家居、安全、科技类优先），并给出电火灶（无明火烹饪电器）账号可蹭的角度。严格输出 JSON 数组，格式：[{"topic":"热点名称","angle":"电火灶蹭法，40字内"}]，共5条，不要输出其他任何内容。' },
+          { role: 'system', content: '你是抖音热点选题顾问。基于你对近期抖音内容生态的了解，输出当前热门的内容方向/话题/形式（生活、厨房、家居、安全、科技类优先），并给出华火电火灶（等离子电火技术、插电生明火、无需燃气、1300℃烈焰、¥2380-38800共15款）账号可蹭的角度。角度中如涉及产品参数只能用这些真实参数。严格输出 JSON 数组，格式：[{"topic":"热点名称","angle":"电火灶蹭法，40字内"}]，共5条，不要输出其他任何内容。' },
           { role: 'user', content: `今天是${todayStr()}，生成今日抖音热点风向 5 条。` }
         ],
         temperature: 0.8,
@@ -1921,7 +1982,7 @@ async function genInspiration() {
       body: JSON.stringify({
         model: cfg.model,
         messages: [
-          { role: 'system', content: '你是电火灶信息流视频创意顾问。随机生成3个拍摄灵感，每个包含：创意标题（15字内）+ 一句话拍法（30字内）。面向经销商分发场景，禁绝对化用语，参数不得编造。严格输出 JSON 数组：[{"title":"创意标题","how":"一句话拍法"}]，不要输出其他内容。' },
+          { role: 'system', content: '你是华火电火灶信息流视频创意顾问。随机生成3个拍摄灵感，每个包含：创意标题（15字内）+ 一句话拍法（30字内）。面向经销商分发场景，禁绝对化用语。产品真实依据：等离子电火技术、插电生明火、无需燃气、1300℃烈焰、热效率81.5%、单灶¥2380起/组合灶¥3480起/双喷¥4480起/商用¥5380起（10000W商用款¥38800）。涉及参数只能用这些。严格输出 JSON 数组：[{"title":"创意标题","how":"一句话拍法"}]，不要输出其他内容。' },
           { role: 'user', content: `随机种子 ${seed}，生成 3 个和上次不同的灵感。` }
         ],
         temperature: 1.0,
@@ -2032,7 +2093,7 @@ async function genTopics() {
       body: JSON.stringify({
         model: cfg.model,
         messages: [
-          { role: 'system', content: '你是电火灶信息流选题策划。每条选题输出一行，格式：标题 | 描述 | 标签1,标签2 | 平台 | 优先级' },
+          { role: 'system', content: '你是华火电火灶信息流选题策划。选题必须基于真实产品：等离子电火技术、插电生明火、无需燃气、1300℃烈焰、热效率81.5%，单灶DQ20Pro¥2880/U7¥2399/MiniX1¥2380/P5pro¥3180/TP6¥3480，组合灶U8¥3480/U8Pro¥3980/P60¥4399/P60pro¥4549，双喷火灶U9¥4480/U9Pro¥4980/U10Pro¥5180，商用P50S¥5380/10000W商用¥38800。选题涉及产品参数只能用这些，不得编造。每条选题输出一行，格式：标题 | 描述 | 标签1,标签2 | 平台 | 优先级' },
           { role: 'user', content: `${cmd}\n\n要求：生成 ${count} 条选题。每行一条，用 | 分隔字段（标题|描述|标签|平台|优先级）。平台从小红书/抖音/视频号/公众号选，优先级从高/中/低选。只输出内容，不要解释。` }
         ],
         temperature: 0.8,
@@ -2140,7 +2201,7 @@ async function genCopies() {
   btn.disabled = true; btn.style.opacity = '0.6';
 
   const dimText = dim === 'all' ? '覆盖4个维度（硬核演示、安全科普、生活场景、品牌故事）' : `维度：${dim}`;
-  const userPrompt = `${cmd}\n\n生成 ${count} 条电火灶信息流文案，${dimText}。\n每条格式：\n---\n维度：xxx\n封面：第一行/第二行/第三行[/第四行]\n---\n\n严格按格式输出，每条之间用 --- 分隔，不要加序号和解释。`;
+  const userPrompt = `${cmd}\n\n生成 ${count} 条华火电火灶信息流文案，${dimText}。\n【真实产品参数（文案中涉及产品参数必须出自这里，禁止编造）】\n${PRODUCT_KB_BRIEF}\n【通用卖点】等离子电火技术/插电生明火/无需天然气液化气/1300℃烈焰/热效率81.5%/防爆玻璃面板/风扇散热故障检测芯片。\n禁绝对化用语（最/第一/100%），禁标题党。\n每条格式：\n---\n维度：xxx\n封面：第一行/第二行/第三行[/第四行]\n---\n\n严格按格式输出，每条之间用 --- 分隔，不要加序号和解释。`;
 
   const updateStatus = (msg) => { status.textContent = msg; status.style.color = 'var(--text-soft)'; };
 
@@ -2787,7 +2848,7 @@ async function genScript() {
       body: JSON.stringify({
         model: cfg.model,
         messages: [
-          { role: 'system', content: '你是电火灶口播稿写手。输出格式如下，不要加多余解释：\n标题：xxx\n\n口播稿：\n[口播逐字稿正文，口语化有互动感，用"你看""你听"，45秒约150字]\n\n分镜：\n1. 景别-画面内容\n2. 景别-画面内容\n3. 景别-画面内容\n4. 景别-画面内容' },
+          { role: 'system', content: '你是华火电火灶口播稿写手。口播中的产品参数必须真实，不得编造。真实依据：等离子电火技术、插电生明火、无需天然气/液化气、1300℃烈焰、热效率81.5%、防爆玻璃面板、风扇散热故障检测芯片；单灶DQ20Pro¥2880（2500W/9色/可台嵌两用）、U7¥2399、U7Pro¥2499、MiniX1¥2380（性价比之王）、P5pro¥3180、TP6¥3480（触屏APP），组合灶U8¥3480/U8Pro¥3980/P60¥4399/P60pro¥4549（电火灶+电陶炉明火暗火一灶搞定），双喷火灶U9¥4480/U9Pro¥4980/U10Pro¥5180（双区独立明火），商用P50S¥5380、10000W商用款¥38800。禁绝对化用语。输出格式如下，不要加多余解释：\n标题：xxx\n\n口播稿：\n[口播逐字稿正文，口语化有互动感，用"你看""你听"，45秒约150字]\n\n分镜：\n1. 景别-画面内容\n2. 景别-画面内容\n3. 景别-画面内容\n4. 景别-画面内容' },
           { role: 'user', content: `${cmd}\n\n维度：${dim}。按上面的格式输出标题、口播稿和分镜。` }
         ],
         temperature: 0.8,
@@ -3571,6 +3632,9 @@ renderHome();
 updateSidebarCompleteness();
 startWorkCountdown();
 startHealthReminder();
+// 恢复豆花近3天聊天记录
+initAiChat();
+renderAiLog();
 // 每日自动查重
 (function() {
   if (data.lastDupCheck !== localDateStr()) {
