@@ -505,17 +505,20 @@
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
             <div>
               <div style="font-size:15px;font-weight:700">Huahuo豆花 · 品牌部 AI 助手</div>
-              <div style="font-size:11px;opacity:0.75;margin-top:3px">A总好，产品热点、选题建议、文案灵感，直接问豆花</div>
+              <div style="font-size:11px;opacity:0.75;margin-top:3px">A总好，豆花能看图、读链接、出选题文案，也能帮您记录到备忘/文案库/选题/复盘</div>
             </div>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
               <span class="ai-chip" onclick="askAI('最近电火灶行业有什么热点话题？给我3个可以蹭的选题方向')">🔥 近期产品热点</span>
               <span class="ai-chip" onclick="askAI('电火灶信息流视频，最近哪类内容在抖音/小红书表现好？给3个拍摄建议')">📈 爆款内容方向</span>
-              <span class="ai-chip" onclick="askAI('针对电火灶「无明火烹饪」卖点，写3个能引起好奇的开场钩子')">💡 选题灵感</span>
+              <span class="ai-chip" onclick="askAI('把「无明火演示：纸巾靠近炉面不燃烧」作为高优选题记到选题库，抖音，标签：安全、演示')">📝 让豆花记录</span>
             </div>
           </div>
           <div class="ai-chat-log" id="aiChatLog"></div>
+          <div id="aiImgPreview" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"></div>
           <div class="ai-chat-input-row">
-            <input type="text" id="aiChatInput" placeholder="输入问题，如：最近电火灶有什么热点选题？" onkeydown="if(event.key==='Enter')askAI()">
+            <input type="file" id="aiImgInput" accept="image/*" multiple style="display:none" onchange="onAiImagesPicked(event)">
+            <button class="btn" style="background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);padding:9px 12px" onclick="document.getElementById('aiImgInput').click()" title="上传图片给豆花看">🖼</button>
+            <input type="text" id="aiChatInput" placeholder="提问 / 发图片 / 粘贴网页链接，也可让豆花：记备忘、加文案、存选题…" onkeydown="if(event.key==='Enter')askAI()">
             <button class="btn" style="background:#fff;color:#111;border:none;font-weight:600;padding:9px 18px" onclick="askAI()">发送</button>
           </div>
         </div>
@@ -1244,20 +1247,178 @@ function renderHomeDailyTimers() {
 }
 
 // ===== AI 助手对话 =====
-let aiChatHistory = []; // {role, content}
+let aiChatHistory = []; // {role, content: 字符串 或 多模态数组}
+let pendingImages = [];  // 待发送图片 dataURL
+
+const AI_SYSTEM_PROMPT = [
+'你是华焰天下电火灶品牌部的AI助手，名字叫「Huahuo豆花」，服务对象是品牌部拍摄剪辑师A总。A总制作电火灶信息流视频（抖音/小红书/视频号分发给经销商）和口播产品宣传视频。',
+'回答规则：',
+'1. 每次回答开头自然称呼"A总"（如"A总，……"），结尾不加称呼',
+'2. 热点/选题/文案：给具体可执行的建议，符合信息流调性；产品参数基于事实不编造；禁绝对化用语（最/第一/100%）和标题党',
+'3. A总可能发来图片（封面、成片截图、数据表、竞品截图等）或网页链接（你会看到链接的真实抓取正文）：请像真人助理一样先看图、先读内容再分析，不要假装看不到；图片看不清或信息不足要如实说',
+'4. 简洁实用，短段落，重点加【】，一般不超过300字；图片/链接分析可适当展开',
+'5. 【记录能力】只有当A总明确要求"记一下/记录/新增到/存入"备忘、文案库、选题、复盘、任务时，才在正常回复的最后另起一行输出一个动作块；没有记录意图时绝不要输出。格式严格如下：',
+'<<<ACTION',
+'{"type":"memo","date":"YYYY-MM-DD","content":"内容"}',
+'ACTION>>>',
+'动作字段说明：',
+'- 备忘录 memo：{"type":"memo","date":"日期可省略默认今天","content":"备忘内容"}',
+'- 文案库 copy：{"type":"copy","dim":"硬核演示|安全科普|生活场景|品牌故事","cover":"封面文字，每行一条，行内用\\n分隔，3-4行"}',
+'- 选题 topic：{"type":"topic","title":"标题","desc":"描述","tags":["标签1","标签2"],"platform":"小红书|抖音|视频号|公众号","priority":"高|中|低"}',
+'- 复盘 review：{"type":"review","topicTitle":"内容标题","platform":"平台","publishDate":"YYYY-MM-DD","views":0,"likes":0,"saves":0,"comments":0,"conclusion":"结论"}',
+'- 任务 daily：{"type":"daily","date":"日期可省略默认今天","title":"任务内容","priority":"高|中|低","note":"备注"}',
+'动作块要求：一次最多一个；JSON严格合法（双引号、无注释）；缺字段用合理默认；动作块之外照常说人话，告诉A总你记了什么。'
+].join('\n');
+
+function aiMessageDisplay(m) {
+  if (typeof m.content === 'string') return { text: m.content, imgs: 0 };
+  let text = '', imgs = 0;
+  m.content.forEach(p => {
+    if (p.type === 'text') text += p.text;
+    else if (p.type === 'image_url') imgs++;
+  });
+  return { text, imgs };
+}
+function renderAiLog(extra) {
+  const log = document.getElementById('aiChatLog');
+  if (!log) return;
+  log.innerHTML = aiChatHistory.map(m => {
+    const d = aiMessageDisplay(m);
+    const tag = d.imgs ? `<div style="font-size:11px;opacity:.7;margin-bottom:3px">🖼 图片 ×${d.imgs}</div>` : '';
+    return `<div class="ai-msg ${m.role==='user'?'user':'bot'}">${tag}${escHtml(d.text).replace(/\n/g,'<br>')}</div>`;
+  }).join('') + (extra || '');
+  log.scrollTop = log.scrollHeight;
+}
+
+// ---- 图片选择 / 压缩 / 预览 ----
+function onAiImagesPicked(ev) {
+  const files = Array.from(ev.target.files || []);
+  ev.target.value = '';
+  files.forEach(f => {
+    if (!f.type.startsWith('image/')) return;
+    compressImage(f, 1280, 0.82).then(url => {
+      if (!url) return;
+      if (url.length > 6*1024*1024) { showToast('图片过大，请换一张', '#555555'); return; }
+      pendingImages.push(url);
+      renderImgPreview();
+    });
+  });
+}
+function compressImage(file, maxEdge, quality) {
+  return new Promise(res => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > maxEdge || h > maxEdge) {
+          const k = Math.min(maxEdge/w, maxEdge/h);
+          w = Math.round(w*k); h = Math.round(h*k);
+        }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        res(c.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => res('');
+      img.src = reader.result;
+    };
+    reader.onerror = () => res('');
+    reader.readAsDataURL(file);
+  });
+}
+function removePendingImage(i) { pendingImages.splice(i,1); renderImgPreview(); }
+function renderImgPreview() {
+  const box = document.getElementById('aiImgPreview');
+  if (!box) return;
+  box.innerHTML = pendingImages.map((u,i) => `<div style="position:relative">
+    <img src="${u}" style="width:54px;height:54px;object-fit:cover;border-radius:8px;border:2px solid rgba(255,255,255,.45)">
+    <span onclick="removePendingImage(${i})" style="position:absolute;top:-7px;right:-7px;background:#222;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;border:1.5px solid #fff;line-height:1">×</span>
+  </div>`).join('');
+}
+
+// ---- 链接识别与真实读取 ----
+function extractUrls(text) {
+  const m = text.match(/https?:\/\/[^\s，。、；！？）)】\]"']+/g) || [];
+  return [...new Set(m)];
+}
+function isImageUrl(u) { return /\.(jpe?g|png|webp|gif|bmp)(\?.*)?$/i.test(u); }
+async function fetchWithTimeout(url, ms) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try { return await fetch(url, { signal: ctrl.signal }); } finally { clearTimeout(t); }
+}
+function htmlToText(html) {
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('script,style,noscript,svg,nav,footer,header,iframe,form').forEach(e => e.remove());
+    const t = (doc.body && (doc.body.innerText || doc.body.textContent)) || '';
+    return t.replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();
+  } catch(e) {
+    return String(html).replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+  }
+}
+async function fetchUrlText(rawUrl) {
+  try {
+    const r = await fetchWithTimeout('https://r.jina.ai/' + rawUrl, 15000);
+    if (r.ok) { const t = (await r.text()).trim(); if (t.length > 120) return { ok:true, text:t, via:'reader' }; }
+  } catch(e) {}
+  try {
+    const r = await fetchWithTimeout('https://api.allorigins.win/raw?url=' + encodeURIComponent(rawUrl), 20000);
+    if (r.ok) { const t = htmlToText(await r.text()); if (t.length > 50) return { ok:true, text:t, via:'proxy' }; }
+  } catch(e) {}
+  try {
+    const r = await fetchWithTimeout(rawUrl, 12000);
+    if (r.ok) { const t = htmlToText(await r.text()); if (t.length > 50) return { ok:true, text:t, via:'direct' }; }
+  } catch(e) {}
+  return { ok:false, text:'' };
+}
+
+function todayCn() {
+  const d = new Date();
+  const w = ['日','一','二','三','四','五','六'][d.getDay()];
+  return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 星期${w}（${localDateStr()}）`;
+}
+
 async function askAI(presetQuestion) {
   const input = document.getElementById('aiChatInput');
-  const log = document.getElementById('aiChatLog');
-  const q = (presetQuestion || input.value).trim();
-  if (!q || presetQuestion === undefined && input.value.trim() === '') return;
-  if (!presetQuestion && input) input.value = '';
+  const isPreset = presetQuestion !== undefined;
+  const rawQ = (isPreset ? presetQuestion : input.value).trim();
+  if (!rawQ && !pendingImages.length) return;
+  if (!isPreset && input) input.value = '';
   const cfg = data.aiConfig;
   if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) { showToast('请先启动工作台.bat（AI 代理）', '#555555'); return; }
 
-  // 显示用户消息
-  aiChatHistory.push({ role: 'user', content: q });
-  log.innerHTML = aiChatHistory.map(m => `<div class="ai-msg ${m.role==='user'?'user':'bot'}">${escHtml(m.content)}</div>`).join('') + '<div class="ai-msg bot thinking">思考中…</div>';
-  log.scrollTop = log.scrollHeight;
+  const images = pendingImages.splice(0, pendingImages.length);
+  renderImgPreview();
+
+  // 链接预处理：图片链接入图，普通链接抓正文
+  const urls = extractUrls(rawQ);
+  const pageUrls = [], netImages = [];
+  urls.forEach(u => (isImageUrl(u) ? netImages : pageUrls).push(u));
+
+  let contextText = rawQ || '请看图片';
+  if (pageUrls.length) {
+    renderAiLog('<div class="ai-msg bot thinking">⏳ 豆花正在打开链接读取真实内容…</div>');
+    for (const u of pageUrls.slice(0,2)) {
+      const r = await fetchUrlText(u);
+      if (r.ok) {
+        contextText += `\n\n【网页链接 ${u} 的真实抓取内容（通道:${r.via}），请基于这些内容回答】\n${r.text.slice(0,4000)}\n【网页内容结束】`;
+      } else {
+        contextText += `\n\n【注：A总发了链接 ${u}，但豆花暂时无法抓取其内容（站点登录/反爬限制），请结合链接主题谨慎回答，并提示A总可直接复制正文】`;
+      }
+    }
+  }
+
+  let userContent = contextText;
+  if (images.length || netImages.length) {
+    userContent = [{ type:'text', text: contextText }];
+    images.forEach(u => userContent.push({ type:'image_url', image_url:{ url:u } }));
+    netImages.forEach(u => userContent.push({ type:'image_url', image_url:{ url:u } }));
+  }
+
+  aiChatHistory.push({ role:'user', content: userContent });
+  renderAiLog('<div class="ai-msg bot thinking">豆花思考中…</div>');
 
   try {
     const resp = await fetch(`${cfg.baseUrl}/chat/completions`, {
@@ -1266,25 +1427,135 @@ async function askAI(presetQuestion) {
       body: JSON.stringify({
         model: cfg.model,
         messages: [
-          { role: 'system', content: '你是华焰天下电火灶品牌部的AI助手，名字叫「Huahuo豆花」，服务对象是品牌部的拍摄剪辑师 A总。A总制作电火灶信息流视频（面向经销商分发抖音/小红书/视频号）和口播产品宣传视频。回答要点：\n1. 每次回答开头自然称呼"A总"（例如"A总，……"），结尾不用再加称呼\n2. 关于产品热点、选题、文案的问题：给出具体可执行的建议，符合信息流视频调性\n3. 产品参数基于事实，不编造；禁绝对化用语（最/第一/100%等）；禁标题党\n4. 回答简洁实用，用短段落，重点内容加【】标注，控制在300字内' },
+          { role: 'system', content: AI_SYSTEM_PROMPT + '\n\n【当前真实日期】今天是 ' + todayCn() + '。A总说"今天/明天/后天/周X"时，一律按此日期换算成 YYYY-MM-DD。' },
           ...aiChatHistory.slice(-8)
         ],
         temperature: 0.8,
-        max_tokens: 800,
+        max_tokens: 1000,
         thinking: { type: "disabled" }
       })
     });
     if (!resp.ok) { const err = await resp.json().catch(()=>({})); throw new Error(err.error?.message || `HTTP ${resp.status}`); }
     const json = await resp.json();
-    const content = json.choices?.[0]?.message?.content || '（无返回内容）';
-    aiChatHistory.push({ role: 'assistant', content });
-    log.innerHTML = aiChatHistory.map(m => `<div class="ai-msg ${m.role==='user'?'user':'bot'}">${escHtml(m.content)}</div>`).join('');
-    log.scrollTop = log.scrollHeight;
+    const raw = json.choices?.[0]?.message?.content || '（无返回内容）';
+    const parsed = parseAction(raw);
+    aiChatHistory.push({ role: 'assistant', content: parsed.reply || 'A总，已按您的要求准备好记录。' });
+    renderAiLog();
+    if (parsed.action) openActionConfirm(parsed.action);
   } catch(e) {
-    aiChatHistory.pop(); // 移除失败的用户消息，方便重试
-    log.innerHTML = aiChatHistory.map(m => `<div class="ai-msg ${m.role==='user'?'user':'bot'}">${escHtml(m.content)}</div>`).join('') + `<div class="ai-msg bot">⚠️ 请求失败：${escHtml(e.message)}\n请确认已运行 启动工作台.bat</div>`;
-    log.scrollTop = log.scrollHeight;
+    aiChatHistory.push({ role: 'assistant', content: '⚠️ 请求失败：' + e.message + '\n请确认已运行 启动工作台.bat' });
+    renderAiLog();
   }
+}
+
+// ---- 动作（豆花代记录） ----
+const ACTION_META = {
+  memo:   { label:'备忘录', icon:'📝', fields:[['date','日期'],['content','内容']] },
+  copy:   { label:'文案库', icon:'📄', fields:[['dim','维度'],['cover','封面文字']] },
+  topic:  { label:'选题库', icon:'💡', fields:[['title','标题'],['platform','平台'],['priority','优先级'],['tags','标签'],['desc','描述']] },
+  review: { label:'复盘',   icon:'📊', fields:[['topicTitle','内容标题'],['platform','平台'],['publishDate','发布日期'],['views','播放'],['likes','点赞'],['saves','收藏'],['comments','评论'],['conclusion','结论']] },
+  daily:  { label:'任务',   icon:'✅', fields:[['date','日期'],['title','任务'],['priority','优先级'],['note','备注']] },
+};
+function parseAction(text) {
+  const m = text.match(/<<<\s*ACTION\s*([\s\S]*?)\s*ACTION\s*>>>/i);
+  if (!m) return { reply: text.trim(), action: null };
+  const reply = text.replace(m[0], '').trim();
+  let action = null;
+  try { action = JSON.parse(m[1].trim()); } catch(e) { action = { __error: true }; }
+  return { reply, action };
+}
+function normalizeAction(a) {
+  const today = localDateStr();
+  const x = Object.assign({}, a);
+  switch (x.type) {
+    case 'memo':
+      if (!String(x.content||'').trim()) return { __invalid:'缺少备忘内容' };
+      x.content = String(x.content).trim();
+      x.date = /^\d{4}-\d{2}-\d{2}$/.test(x.date) ? x.date : today;
+      break;
+    case 'copy':
+      if (!['硬核演示','安全科普','生活场景','品牌故事'].includes(x.dim)) x.dim = '生活场景';
+      if (!String(x.cover||'').trim()) return { __invalid:'缺少封面文字' };
+      x.cover = String(x.cover).trim();
+      break;
+    case 'topic':
+      if (!String(x.title||'').trim()) return { __invalid:'缺少选题标题' };
+      x.title = String(x.title).trim();
+      x.desc = String(x.desc||'').trim();
+      x.tags = Array.isArray(x.tags) ? x.tags.map(String) : String(x.tags||'').split(/[,，、]/).map(s=>s.trim()).filter(Boolean);
+      if (!['小红书','抖音','视频号','公众号'].includes(x.platform)) x.platform = '抖音';
+      if (!['高','中','低'].includes(x.priority)) x.priority = '中';
+      break;
+    case 'review':
+      if (!String(x.topicTitle||'').trim()) return { __invalid:'缺少内容标题' };
+      x.topicTitle = String(x.topicTitle).trim();
+      if (!['小红书','抖音','视频号','公众号'].includes(x.platform)) x.platform = '抖音';
+      x.publishDate = /^\d{4}-\d{2}-\d{2}$/.test(x.publishDate) ? x.publishDate : today;
+      ['views','likes','saves','comments'].forEach(k => x[k] = Number(x[k]) || 0);
+      x.conclusion = String(x.conclusion||'').trim();
+      break;
+    case 'daily':
+      if (!String(x.title||'').trim()) return { __invalid:'缺少任务内容' };
+      x.title = String(x.title).trim();
+      x.date = /^\d{4}-\d{2}-\d{2}$/.test(x.date) ? x.date : today;
+      if (!['高','中','低'].includes(x.priority)) x.priority = '中';
+      x.note = String(x.note||'').trim();
+      break;
+    default: return { __invalid:'未知记录类型' };
+  }
+  return x;
+}
+function openActionConfirm(action) {
+  if (!action || action.__error || !ACTION_META[action.type]) {
+    showToast('豆花的记录指令格式有误，已忽略，请换个说法', '#555555');
+    return;
+  }
+  const norm = normalizeAction(action);
+  if (norm.__invalid) { showToast('记录信息不完整：' + norm.__invalid, '#555555'); return; }
+  window.__pendingAction = norm;
+  const meta = ACTION_META[norm.type];
+  const rows = meta.fields
+    .filter(f => norm[f[0]] !== undefined && norm[f[0]] !== '')
+    .map(f => {
+      let v = norm[f[0]];
+      if (Array.isArray(v)) v = v.join('、');
+      return `<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px dashed #e5e7eb;font-size:13px">
+        <span style="color:var(--text-soft);min-width:64px">${f[1]}</span>
+        <span style="flex:1;white-space:pre-wrap">${escHtml(String(v))}</span></div>`;
+    }).join('');
+  openModal(`
+    <div class="modal-title">${meta.icon} 豆花要记录到【${meta.label}】</div>
+    <div style="margin:8px 0 4px;color:var(--text-soft);font-size:12px">请A总确认，确认后立即写入工作台对应模块</div>
+    <div style="max-height:48vh;overflow:auto;margin-bottom:8px">${rows}</div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="confirmAction()">确认记录</button>
+    </div>
+  `);
+}
+function confirmAction() {
+  const a = window.__pendingAction;
+  if (!a) { closeModal(); return; }
+  const label = ACTION_META[a.type].label;
+  if (a.type === 'memo') {
+    const old = data.memos[a.date] ? data.memos[a.date].trim() : '';
+    data.memos[a.date] = old ? old + '\n' + a.content : a.content;
+    save(); renderCalendar();
+  } else if (a.type === 'copy') {
+    data.copies.unshift({ id: 'W' + data.seq.copy++, dim: a.dim, cover: a.cover, favorite: false });
+    save(); renderCopies();
+  } else if (a.type === 'topic') {
+    data.topics.unshift({ id: 'T' + data.seq.topic++, title: a.title, desc: a.desc, tags: a.tags, platform: a.platform, priority: a.priority, status: '待拍', createdAt: localDateStr() });
+    save(); renderTopics();
+  } else if (a.type === 'review') {
+    data.reviews.unshift({ id: 'R' + data.seq.review++, topicTitle: a.topicTitle, platform: a.platform, publishDate: a.publishDate, views: a.views, likes: a.likes, saves: a.saves, comments: a.comments, conclusion: a.conclusion });
+    save(); renderReviews();
+  } else if (a.type === 'daily') {
+    data.dailyWork.unshift({ id: 'D' + data.seq.daily++, date: a.date, title: a.title, done: false, priority: a.priority, note: a.note });
+    save(); renderDaily(); renderHomeDaily(); renderHome();
+  }
+  closeModal();
+  showToast('豆花已帮A总记录到【' + label + '】', '#111111');
 }
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
