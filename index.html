@@ -522,7 +522,7 @@
           <div class="card-head">
             <div>
               <div class="card-title">抖音热点风向 <span style="font-size:11px;color:var(--text-mute);font-weight:400;margin-left:6px">AI 生成 · 供选题参考</span></div>
-              <div class="card-desc">Huahuo豆花结合近期抖音热点，给出电火灶内容可蹭的角度。</div>
+              <div class="card-desc">Huahuo 豆花结合近期抖音热点，给出电火灶内容可蹭的角度。</div>
             </div>
             <div style="display:flex;gap:8px">
               <button class="btn" style="padding:5px 12px;font-size:12px" onclick="genInspiration()">⚡ AI 灵感</button>
@@ -537,21 +537,21 @@
         <div class="ai-chat-card">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
             <div>
-              <div style="font-size:15px;font-weight:700">Huahuo豆花 · 品牌部 AI 助手</div>
-              <div style="font-size:11px;opacity:0.75;margin-top:3px">A总好，豆花能看图、读链接、出选题文案，也能帮您记录到备忘/文案库/选题/复盘</div>
+              <div style="font-size:15px;font-weight:700">Huahuo 豆花 · 品牌部 AI 助手</div>
+              <div style="font-size:11px;opacity:0.75;margin-top:3px">A总好，Huahuo 豆花能看图、读链接、出选题文案，也能帮您记录到备忘/文案库/选题/复盘</div>
             </div>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
               <span class="ai-chip" onclick="askAI('最近电火灶行业有什么热点话题？给我3个可以蹭的选题方向')">🔥 近期产品热点</span>
               <span class="ai-chip" onclick="askAI('电火灶信息流视频，最近哪类内容在抖音/小红书表现好？给3个拍摄建议')">📈 爆款内容方向</span>
-              <span class="ai-chip" onclick="askAI('把「无明火演示：纸巾靠近炉面不燃烧」作为高优选题记到选题库，抖音，标签：安全、演示')">📝 让豆花记录</span>
+              <span class="ai-chip" onclick="askAI('把「无明火演示：纸巾靠近炉面不燃烧」作为高优选题记到选题库，抖音，标签：安全、演示')">📝 让 Huahuo 豆花记录</span>
             </div>
           </div>
           <div class="ai-chat-log" id="aiChatLog"></div>
           <div id="aiImgPreview" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px"></div>
           <div class="ai-chat-input-row">
             <input type="file" id="aiImgInput" accept="image/*" multiple style="display:none" onchange="onAiImagesPicked(event)">
-            <button class="btn" style="background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);padding:9px 12px;border-radius:980px" onclick="document.getElementById('aiImgInput').click()" title="上传图片给豆花看">🖼</button>
-            <input type="text" id="aiChatInput" placeholder="提问 / 发图片 / 粘贴网页链接，也可让豆花：记备忘、加文案、存选题…" onkeydown="if(event.key==='Enter')askAI()">
+            <button class="btn" style="background:rgba(255,255,255,0.14);color:#fff;border:1px solid rgba(255,255,255,0.25);padding:9px 12px;border-radius:980px" onclick="document.getElementById('aiImgInput').click()" title="上传图片给 Huahuo 豆花看">🖼</button>
+            <input type="text" id="aiChatInput" placeholder="提问 / 发图片 / 粘贴网页链接，也可让 Huahuo 豆花：记备忘、加文案、存选题…" onkeydown="if(event.key==='Enter')askAI()">
             <button class="btn" style="background:#fff;color:#1D1D1F;border:none;font-weight:600;padding:9px 18px;border-radius:980px" onclick="askAI()">发送</button>
           </div>
         </div>
@@ -1065,7 +1065,15 @@ function renderHome() {
   const dueCoop = data.cooperations.filter(c => c.status === '待交付' || c.status === '待回款').length;
   if (dueCoop) reminders.push({dot:'var(--tag-orange)', title:`${dueCoop} 个合作临近交付`, desc:'请确认脚本、封面和交付文件。', action:'合作', cls:'coop'});
   const todayHigh = data.dailyWork.filter(d => d.date === todayStr() && !d.done && d.priority === '高').length;
-  if (todayHigh) reminders.unshift({dot:'#FF3B30', title:`今日有 ${todayHigh} 项高优先级任务待完成`, desc:'A总，高优先级任务建议优先处理，确保18:00前完成。', action:'打卡', cls:'daily'});
+  // 18:00后高优未完成 → 红色超时警告置顶
+  const nowMin0 = new Date().getHours() * 60 + new Date().getMinutes();
+  const isOvertime = nowMin0 >= WORK.goal && nowMin0 < WORK.end;
+  if (todayHigh && isOvertime) {
+    const highNames = data.dailyWork.filter(d => d.date === todayStr() && !d.done && d.priority === '高').map(d => d.title).slice(0,3).join('、');
+    reminders.unshift({dot:'#FF3B30', title:`⚠️ ${todayHigh} 项高优先级任务已超18:00目标`, desc:`A总，超时任务：${highNames}，请立即处理收尾`, action:'打卡', cls:'daily'});
+  } else if (todayHigh) {
+    reminders.unshift({dot:'#FF3B30', title:`今日有 ${todayHigh} 项高优先级任务待完成`, desc:'A总，高优先级任务建议优先处理，确保18:00前完成。', action:'打卡', cls:'daily'});
+  }
   const todayTasks = data.dailyWork.filter(d => d.date === todayStr() && !d.done).length;
   if (todayTasks) reminders.push({dot:'var(--tag-blue)', title:`今日还有 ${todayTasks} 项工作待完成`, desc:'前往日常工作打卡完成。', action:'打卡', cls:'daily'});
   const unarchived = data.backups.filter(b => !b.archived).length;
@@ -1184,6 +1192,74 @@ function startWorkCountdown() {
   if (workCountdownTimer) clearInterval(workCountdownTimer);
   updateWorkCountdown();
   workCountdownTimer = setInterval(updateWorkCountdown, 1000);
+  // 每小时进度提醒
+  startHourlyReminder();
+  // 高优超时检查
+  startHighPriorityOvertimeCheck();
+}
+
+// 每小时整点提醒：工作时间（非午休非周末）每到整点 toast 进度
+let lastHourReminder = -1;
+function startHourlyReminder() {
+  setInterval(function() {
+    var now = new Date();
+    var day = now.getDay();
+    if (day === 0 || day === 6) return; // 周末不打扰
+    var nowMin = now.getHours() * 60 + now.getMinutes();
+    var startMin = WORK.start, lunchStart = WORK.lunchStart, lunchEnd = WORK.lunchEnd, goalMin = WORK.goal;
+    // 工作时段内（排除午休），且过了9:30且未到18:00
+    var inWork = (nowMin >= startMin && nowMin < lunchStart) || (nowMin >= lunchEnd && nowMin < goalMin);
+    if (!inWork) return;
+    // 整点（分钟为0）才提醒，且不重复
+    if (now.getMinutes() !== 0) return;
+    var hour = now.getHours();
+    if (hour === lastHourReminder) return;
+    lastHourReminder = hour;
+    var today = todayStr();
+    var list = data.dailyWork.filter(function(d) { return d.date === today; });
+    var total = list.length;
+    var done = list.filter(function(d) { return d.done; }).length;
+    var remain = total - done;
+    var pct = total ? Math.round(done / total * 100) : 0;
+    // 剩余工作时间
+    var remainMin;
+    if (nowMin < lunchStart) {
+      remainMin = (lunchStart - nowMin) + (goalMin - lunchEnd);
+    } else {
+      remainMin = goalMin - nowMin;
+    }
+    var rh = Math.floor(remainMin / 60);
+    var rm = remainMin % 60;
+    var highRemain = list.filter(function(d) { return !d.done && d.priority === '高'; }).length;
+    var msg = now.getHours() + ':00 进度：已完成 ' + done + '/' + total + '（' + pct + '%），剩 ' + remain + ' 项';
+    if (rh > 0 || rm > 0) msg += '，距18:00目标还剩 ' + rh + 'h' + rm + 'm';
+    if (highRemain > 0) msg += '，高优先级待办 ' + highRemain + ' 项';
+    showToast(msg, '#0071E3');
+  }, 30000); // 每30秒检查一次
+}
+
+// 高优任务超时红色警告：18:00后如有高优未完成，每3分钟提醒一次
+let lastOvertimeWarn = -1;
+function startHighPriorityOvertimeCheck() {
+  setInterval(function() {
+    var now = new Date();
+    var day = now.getDay();
+    if (day === 0 || day === 6) return;
+    var nowMin = now.getHours() * 60 + now.getMinutes();
+    var goalMin = WORK.goal, endMin = WORK.end;
+    if (nowMin < goalMin || nowMin >= endMin) return; // 18:00-18:30之间才警告
+    var today = todayStr();
+    var highUndone = data.dailyWork.filter(function(d) {
+      return d.date === today && !d.done && d.priority === '高';
+    });
+    if (highUndone.length === 0) return;
+    // 每3分钟提醒一次（以分钟数除3取余为0）
+    if (now.getMinutes() % 3 !== 0) return;
+    if (nowMin === lastOvertimeWarn) return;
+    lastOvertimeWarn = nowMin;
+    var names = highUndone.map(function(d) { return d.title; }).slice(0, 3).join('、');
+    showToast('⚠️ A总，' + highUndone.length + ' 项高优先级任务已超18:00目标：' + names, '#FF3B30');
+  }, 30000);
 }
 function updateWorkCountdown() {
   const el = document.getElementById('workCountdown');
@@ -1286,7 +1362,7 @@ let aiChatHistory = []; // {role, content: 字符串 或 多模态数组}
 let pendingImages = [];  // 待发送图片 dataURL
 
 const AI_SYSTEM_PROMPT = [
-'你是华焰天下电火灶品牌部的AI助手，名字叫「Huahuo豆花」，服务对象是品牌部拍摄剪辑师A总。A总制作电火灶信息流视频（抖音/小红书/视频号分发给经销商）和口播产品宣传视频。',
+'你是华焰天下电火灶品牌部的AI助手，名字叫「Huahuo 豆花」，服务对象是品牌部拍摄剪辑师A总。A总制作电火灶信息流视频（抖音/小红书/视频号分发给经销商）和口播产品宣传视频。',
 '回答规则：',
 '1. 每次回答开头自然称呼"A总"（如"A总，……"），结尾不加称呼',
 '2. 热点/选题/文案：给具体可执行的建议，符合信息流调性；产品参数基于事实不编造；禁绝对化用语（最/第一/100%）和标题党',
@@ -1434,13 +1510,13 @@ async function askAI(presetQuestion) {
 
   let contextText = rawQ || '请看图片';
   if (pageUrls.length) {
-    renderAiLog('<div class="ai-msg bot thinking">⏳ 豆花正在打开链接读取真实内容…</div>');
+    renderAiLog('<div class="ai-msg bot thinking">⏳ Huahuo 豆花正在打开链接读取真实内容…</div>');
     for (const u of pageUrls.slice(0,2)) {
       const r = await fetchUrlText(u);
       if (r.ok) {
         contextText += `\n\n【网页链接 ${u} 的真实抓取内容（通道:${r.via}），请基于这些内容回答】\n${r.text.slice(0,4000)}\n【网页内容结束】`;
       } else {
-        contextText += `\n\n【注：A总发了链接 ${u}，但豆花暂时无法抓取其内容（站点登录/反爬限制），请结合链接主题谨慎回答，并提示A总可直接复制正文】`;
+        contextText += `\n\n【注：A总发了链接 ${u}，但 Huahuo 豆花暂时无法抓取其内容（站点登录/反爬限制），请结合链接主题谨慎回答，并提示A总可直接复制正文】`;
       }
     }
   }
@@ -1453,7 +1529,7 @@ async function askAI(presetQuestion) {
   }
 
   aiChatHistory.push({ role:'user', content: userContent });
-  renderAiLog('<div class="ai-msg bot thinking">豆花思考中…</div>');
+  renderAiLog('<div class="ai-msg bot thinking">Huahuo 豆花思考中…</div>');
 
   try {
     const resp = await fetch(`${cfg.baseUrl}/chat/completions`, {
@@ -1483,7 +1559,7 @@ async function askAI(presetQuestion) {
   }
 }
 
-// ---- 动作（豆花代记录） ----
+// ---- 动作（Huahuo 豆花代记录） ----
 const ACTION_META = {
   memo:   { label:'备忘录', icon:'📝', fields:[['date','日期'],['content','内容']] },
   copy:   { label:'文案库', icon:'📄', fields:[['dim','维度'],['cover','封面文字']] },
@@ -1542,7 +1618,7 @@ function normalizeAction(a) {
 }
 function openActionConfirm(action) {
   if (!action || action.__error || !ACTION_META[action.type]) {
-    showToast('豆花的记录指令格式有误，已忽略，请换个说法', '#555555');
+    showToast('Huahuo 豆花的记录指令格式有误，已忽略，请换个说法', '#555555');
     return;
   }
   const norm = normalizeAction(action);
@@ -1559,7 +1635,7 @@ function openActionConfirm(action) {
         <span style="flex:1;white-space:pre-wrap">${escHtml(String(v))}</span></div>`;
     }).join('');
   openModal(`
-    <div class="modal-title">${meta.icon} 豆花要记录到【${meta.label}】</div>
+    <div class="modal-title">${meta.icon} Huahuo 豆花要记录到【${meta.label}】</div>
     <div style="margin:8px 0 4px;color:var(--text-soft);font-size:12px">请A总确认，确认后立即写入工作台对应模块</div>
     <div style="max-height:48vh;overflow:auto;margin-bottom:8px">${rows}</div>
     <div class="modal-actions">
@@ -1590,7 +1666,7 @@ function confirmAction() {
     save(); renderDaily(); renderHomeDaily(); renderHome();
   }
   closeModal();
-  showToast('豆花已帮A总记录到【' + label + '】', '#111111');
+  showToast('Huahuo 豆花已帮A总记录到【' + label + '】', '#111111');
 }
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1722,7 +1798,7 @@ function renderHotspots() {
   if (!box) return;
   const hs = data.hotspots;
   if (!hs.items.length) {
-    box.innerHTML = '<div class="empty" style="grid-column:1/-1;padding:24px"><div class="empty-icon" style="font-size:26px;margin-bottom:8px">🔥</div>今日热点还没生成，点右上角「刷新热点」让豆花整理</div>';
+    box.innerHTML = '<div class="empty" style="grid-column:1/-1;padding:24px"><div class="empty-icon" style="font-size:26px;margin-bottom:8px">🔥</div>今日热点还没生成，点右上角「刷新热点」让 Huahuo 豆花整理</div>';
     return;
   }
   box.innerHTML = hs.items.map((it, i) => `
@@ -1741,7 +1817,7 @@ async function genHotspots() {
   const btn = document.getElementById('hotspotBtn');
   if (btn) { btn.disabled = true; btn.textContent = '生成中…'; }
   const box = document.getElementById('hotspotList');
-  box.innerHTML = '<div class="empty" style="grid-column:1/-1;padding:24px">⏳ 豆花正在整理今日热点…</div>';
+  box.innerHTML = '<div class="empty" style="grid-column:1/-1;padding:24px">⏳ Huahuo 豆花正在整理今日热点…</div>';
   try {
     const resp = await fetch(`${cfg.baseUrl}/chat/completions`, {
       method: 'POST',
