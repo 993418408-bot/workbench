@@ -489,7 +489,7 @@
           <div class="card-head">
             <div>
               <div class="card-title">抖音热点风向 <span style="font-size:11px;color:var(--text-mute);font-weight:400;margin-left:6px">AI 生成 · 供选题参考</span></div>
-              <div class="card-desc">豆包结合近期抖音热点，给出电火灶内容可蹭的角度。</div>
+              <div class="card-desc">Huahuo豆花结合近期抖音热点，给出电火灶内容可蹭的角度。</div>
             </div>
             <div style="display:flex;gap:8px">
               <button class="btn" style="padding:5px 12px;font-size:12px" onclick="genInspiration()">⚡ AI 灵感</button>
@@ -504,8 +504,8 @@
         <div class="ai-chat-card">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
             <div>
-              <div style="font-size:15px;font-weight:700">🤖 AI 助手 · 豆包</div>
-              <div style="font-size:11px;opacity:0.75;margin-top:3px">查询产品热点、选题建议、文案灵感，直接提问</div>
+              <div style="font-size:15px;font-weight:700">Huahuo豆花 · 品牌部 AI 助手</div>
+              <div style="font-size:11px;opacity:0.75;margin-top:3px">A总好，产品热点、选题建议、文案灵感，直接问豆花</div>
             </div>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
               <span class="ai-chip" onclick="askAI('最近电火灶行业有什么热点话题？给我3个可以蹭的选题方向')">🔥 近期产品热点</span>
@@ -859,10 +859,10 @@ const defaultData = {
     {id:'S03', title:'出租屋一个插座变厨房', topic:'生活场景', duration:'40秒', status:'待写', content:'', storyboard:''}
   ],
   dailyWork: [
-    {id:'D01', date:'2026-09-10', title:'拍摄 3 条信息流视频', done:true, note:'电火灶硬核演示系列'},
-    {id:'D02', date:'2026-09-10', title:'筛选今日文案 20 条', done:true, note:'从文案库挑选 5 条可用'},
-    {id:'D03', date:'2026-09-10', title:'撰写口播脚本 1 条', done:false, note:'离锅自动断火安全演示'},
-    {id:'D04', date:'2026-09-10', title:'回复经销商消息', done:false, note:''}
+    {id:'D01', date:'2026-09-10', title:'拍摄 3 条信息流视频', done:true, note:'电火灶硬核演示系列', priority:'高'},
+    {id:'D02', date:'2026-09-10', title:'筛选今日文案 20 条', done:true, note:'从文案库挑选 5 条可用', priority:'中'},
+    {id:'D03', date:'2026-09-10', title:'撰写口播脚本 1 条', done:false, note:'离锅自动断火安全演示', priority:'高'},
+    {id:'D04', date:'2026-09-10', title:'回复经销商消息', done:false, note:'', priority:'低'}
   ],
   aiConfig: {
     baseUrl: (location.protocol === 'http:' || location.protocol === 'https:') ? 'https://ark.cn-beijing.volces.com/api/v3' : 'http://localhost:9688',
@@ -885,6 +885,7 @@ function load() {
     if (!merged.copies) merged.copies = JSON.parse(JSON.stringify(defaultData.copies));
     if (!merged.scripts) merged.scripts = JSON.parse(JSON.stringify(defaultData.scripts));
     if (!merged.dailyWork) merged.dailyWork = JSON.parse(JSON.stringify(defaultData.dailyWork));
+    merged.dailyWork.forEach(d => { if (!['高','中','低'].includes(d.priority)) d.priority = '中'; });
     if (!merged.aiConfig) merged.aiConfig = JSON.parse(JSON.stringify(defaultData.aiConfig));
     else {
       // 如果通过 http/https 访问（手机/公网），用相对路径走当前域名
@@ -1025,6 +1026,8 @@ function renderHome() {
   if (unreviewed) reminders.push({dot:'var(--tag-red)', title:`${unreviewed} 条内容已发布但未复盘`, desc:'建议补充播放、收藏、评论和结论。', action:'复盘', cls:'review'});
   const dueCoop = data.cooperations.filter(c => c.status === '待交付' || c.status === '待回款').length;
   if (dueCoop) reminders.push({dot:'var(--tag-orange)', title:`${dueCoop} 个合作临近交付`, desc:'请确认脚本、封面和交付文件。', action:'合作', cls:'coop'});
+  const todayHigh = data.dailyWork.filter(d => d.date === todayStr() && !d.done && d.priority === '高').length;
+  if (todayHigh) reminders.unshift({dot:'#111', title:`今日有 ${todayHigh} 项高优先级任务待完成`, desc:'A总，高优先级任务建议优先处理，确保18:00前完成。', action:'打卡', cls:'daily'});
   const todayTasks = data.dailyWork.filter(d => d.date === todayStr() && !d.done).length;
   if (todayTasks) reminders.push({dot:'var(--tag-blue)', title:`今日还有 ${todayTasks} 项工作待完成`, desc:'前往日常工作打卡完成。', action:'打卡', cls:'daily'});
   const unarchived = data.backups.filter(b => !b.archived).length;
@@ -1045,6 +1048,16 @@ function renderHome() {
 }
 
 // ===== 首页今日工作打卡 =====
+// 工作时间：上午 09:30-12:00 / 午休 12:00-13:30 / 下午 13:30-18:30
+// A总每日目标 18:00 前完成工作，所有倒计时按 18:00 提醒
+const WORK = { start: 9*60+30, lunchStart: 12*60, lunchEnd: 13*60+30, goal: 18*60, end: 18*60+30 };
+const PRIORITY_ORDER = { '高': 0, '中': 1, '低': 2 };
+function sortTasks(arr) {
+  return arr.slice().sort((a, b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    return (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1);
+  });
+}
 function getHomeDailyDate() {
   const d = document.getElementById('homeDailyDate');
   if (d && !d.value) d.value = todayStr();
@@ -1054,7 +1067,7 @@ function renderHomeDaily() {
   if (!document.getElementById('homeDailyList')) return;
   const date = getHomeDailyDate();
   document.getElementById('homeTodayDate').textContent = date;
-  const list = data.dailyWork.filter(d => d.date === date);
+  const list = sortTasks(data.dailyWork.filter(d => d.date === date));
   const total = list.length;
   const done = list.filter(d => d.done).length;
   const percent = total ? Math.round(done / total * 100) : 0;
@@ -1069,16 +1082,16 @@ function renderHomeDaily() {
   const el = document.getElementById('homeDailyList');
   if (!list.length) { el.innerHTML = '<div class="empty" style="padding:20px"><div class="empty-icon" style="font-size:28px;margin-bottom:8px">📋</div>今日暂无任务，点右上角"新增"添加</div>'; return; }
 
-  // 每条任务统一截止 18:30，从 9:30 开始倒计时，午休 12:00-14:00 不计时
+  // 每条任务按 18:00 目标倒计时，午休 12:00-13:30 不计时，18:00-18:30 为缓冲超时
   const now = new Date();
   const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds()/60;
-  const startMin = 9 * 60 + 30;
-  const lunchStart = 12 * 60;
-  const lunchEnd = 14 * 60;
-  const endMin = 18 * 60 + 30;
+  const startMin = WORK.start, lunchStart = WORK.lunchStart, lunchEnd = WORK.lunchEnd;
+  const goalMin = WORK.goal, endMin = WORK.end;
   const isWeekday = now.getDay() >= 1 && now.getDay() <= 5;
-  const isWorkTime = isWeekday && (nowMin >= startMin && nowMin < lunchStart || nowMin >= lunchEnd && nowMin < endMin);
+  const isWorkTime = isWeekday && ((nowMin >= startMin && nowMin < lunchStart) || (nowMin >= lunchEnd && nowMin < goalMin));
   const isLunch = isWeekday && nowMin >= lunchStart && nowMin < lunchEnd;
+  const isOverGoal = isWeekday && nowMin >= goalMin && nowMin < endMin;
+  const isAfterEnd = isWeekday && nowMin >= endMin;
 
   el.innerHTML = list.map(d => {
     let timerHtml = '';
@@ -1087,29 +1100,35 @@ function renderHomeDaily() {
     } else if (isWorkTime) {
       let remainMin;
       if (nowMin < lunchStart) {
-        remainMin = (lunchStart - nowMin) + (endMin - lunchEnd);
+        remainMin = (lunchStart - nowMin) + (goalMin - lunchEnd);
       } else {
-        remainMin = endMin - nowMin;
+        remainMin = goalMin - nowMin;
       }
       const h = Math.floor(remainMin / 60);
       const m = Math.floor(remainMin % 60);
       const s = Math.floor((remainMin * 60) % 60);
       timerHtml = `<div class="task-timer">
-        <span class="timer-label">⏰ 截止18:30</span>
+        <span class="timer-label">⏰ 距18:00目标</span>
         <span class="timer-time">${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}</span>
       </div>`;
     } else if (isLunch) {
-      timerHtml = `<div class="task-timer lunch"><span class="timer-label">🍱 午休中</span></div>`;
-    } else if (isWeekday && nowMin >= endMin) {
-      timerHtml = `<div class="task-timer overtime"><span class="timer-label">⏰ 已超时</span></div>`;
+      timerHtml = `<div class="task-timer lunch"><span class="timer-label">🍱 午休中 · 13:30继续</span></div>`;
+    } else if (isOverGoal) {
+      timerHtml = `<div class="task-timer overtime"><span class="timer-label">⏰ 已过18:00目标，请收尾</span></div>`;
+    } else if (isAfterEnd) {
+      timerHtml = `<div class="task-timer overtime"><span class="timer-label">⏰ 已超下班时间18:30</span></div>`;
     } else if (isWeekday && nowMin < startMin) {
       timerHtml = `<div class="task-timer"><span class="timer-label">⏰ 9:30开始</span></div>`;
     }
+    const p = d.priority || '中';
     return `
     <div class="backup-item" style="padding:10px 0;align-items:flex-start;gap:12px;border-bottom:1px solid var(--border-soft)">
       <input type="checkbox" ${d.done?'checked':''} onchange="toggleDaily('${d.id}');renderHomeDaily()" style="width:17px;height:17px;margin-top:2px;accent-color:var(--accent);cursor:pointer">
       <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:500;color:${d.done?'var(--text-mute)':'var(--text)'};text-decoration:${d.done?'line-through':'none'}">${d.title}</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="priority-tag ${p==='高'?'p-high':p==='中'?'p-mid':'p-low'}" style="font-size:10px;padding:1px 7px">${p}</span>
+          <div style="font-size:13px;font-weight:${p==='高'&&!d.done?'600':'500'};color:${d.done?'var(--text-mute)':'var(--text)'};text-decoration:${d.done?'line-through':'none'}">${d.title}</div>
+        </div>
         ${d.note?`<div style="font-size:11px;color:var(--text-soft);margin-top:3px">${d.note}</div>`:''}
         ${timerHtml}
       </div>
@@ -1136,42 +1155,50 @@ function updateWorkCountdown() {
   const now = new Date();
   const today = now.getDay();
   const isWeekend = today === 0 || today === 6;
-  const startMin = 9 * 60 + 30;
-  const lunchStart = 12 * 60;
-  const lunchEnd = 14 * 60;
-  const endMin = 18 * 60 + 30;
+  const startMin = WORK.start, lunchStart = WORK.lunchStart, lunchEnd = WORK.lunchEnd;
+  const goalMin = WORK.goal, endMin = WORK.end;
   const nowMin = now.getHours() * 60 + now.getMinutes();
-  const workTotalMin = (lunchStart - startMin) + (endMin - lunchEnd);
+  const workTotalMin = (lunchStart - startMin) + (goalMin - lunchEnd);
 
   let html = '';
   if (isWeekend) {
     html = `<div style="font-size:11px;opacity:0.8;margin-bottom:4px">周末休息</div>
             <div style="font-size:20px;font-weight:700">🎉 休息日</div>
-            <div style="font-size:10px;opacity:0.7;margin-top:6px">工作时间 09:30 - 18:30</div>`;
+            <div style="font-size:10px;opacity:0.7;margin-top:6px">工作时间 09:30-12:00 / 13:30-18:30 · 目标18:00完成</div>`;
   } else if (nowMin < startMin) {
     const diff = startMin - nowMin;
     const h = Math.floor(diff / 60);
     const m = diff % 60;
     html = `<div style="font-size:11px;opacity:0.8;margin-bottom:4px">距离上班</div>
             <div style="font-size:28px;font-weight:700;font-family:Consolas,monospace">${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}</div>
-            <div style="font-size:10px;opacity:0.7;margin-top:6px">09:30 开始计时</div>`;
+            <div style="font-size:10px;opacity:0.7;margin-top:6px">09:30 开始计时 · 目标 18:00 完成</div>`;
   } else if (nowMin >= endMin) {
     html = `<div style="font-size:11px;opacity:0.8;margin-bottom:4px">今日工作</div>
             <div style="font-size:20px;font-weight:700">✓ 已结束</div>
             <div style="font-size:10px;opacity:0.7;margin-top:6px">18:30 下班</div>`;
+  } else if (nowMin >= goalMin) {
+    const over = nowMin - goalMin;
+    const h = Math.floor(over / 60);
+    const m = over % 60;
+    html = `<div style="font-size:11px;opacity:0.9;margin-bottom:4px">已过目标时间</div>
+            <div style="font-size:26px;font-weight:700;font-family:Consolas,monospace;letter-spacing:1px;animation:pulse 1.5s infinite">+${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}</div>
+            <div style="font-size:10px;opacity:0.85;margin-top:6px">A总，目标 18:00 完成，请尽快收尾（18:30 下班）</div>
+            <div style="background:rgba(255,255,255,0.2);border-radius:4px;height:4px;margin-top:8px;overflow:hidden">
+              <div style="background:#fff;height:100%;width:100%"></div>
+            </div>`;
   } else if (nowMin >= lunchStart && nowMin < lunchEnd) {
     const diff = lunchEnd - nowMin;
     const h = Math.floor(diff / 60);
     const m = diff % 60;
     html = `<div style="font-size:11px;opacity:0.8;margin-bottom:4px">午休中</div>
             <div style="font-size:28px;font-weight:700;font-family:Consolas,monospace">${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}</div>
-            <div style="font-size:10px;opacity:0.7;margin-top:6px">14:00 继续计时</div>`;
+            <div style="font-size:10px;opacity:0.7;margin-top:6px">13:30 继续计时</div>`;
   } else {
     let remainingMin;
     if (nowMin < lunchStart) {
-      remainingMin = (lunchStart - nowMin) + (endMin - lunchEnd);
+      remainingMin = (lunchStart - nowMin) + (goalMin - lunchEnd);
     } else {
-      remainingMin = endMin - nowMin;
+      remainingMin = goalMin - nowMin;
     }
     let elapsedMin;
     if (nowMin < lunchStart) {
@@ -1183,9 +1210,9 @@ function updateWorkCountdown() {
     const h = Math.floor(remainingMin / 60);
     const m = Math.floor(remainingMin % 60);
     const s = 59 - now.getSeconds();
-    html = `<div style="font-size:11px;opacity:0.8;margin-bottom:4px">距下班剩余</div>
+    html = `<div style="font-size:11px;opacity:0.8;margin-bottom:4px">距 18:00 目标剩余</div>
             <div style="font-size:28px;font-weight:700;font-family:Consolas,monospace;letter-spacing:1px">${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}</div>
-            <div style="font-size:10px;opacity:0.7;margin-top:6px">工作时间 09:30-12:00 / 14:00-18:30</div>
+            <div style="font-size:10px;opacity:0.7;margin-top:6px">工作时间 09:30-12:00 / 13:30-18:30 · 目标18:00完成</div>
             <div style="background:rgba(255,255,255,0.2);border-radius:4px;height:4px;margin-top:8px;overflow:hidden">
               <div style="background:#fff;height:100%;width:${pct}%;transition:width 1s"></div>
             </div>
@@ -1199,16 +1226,15 @@ function renderHomeDailyTimers() {
   if (!timers.length) return;
   const now = new Date();
   const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds()/60;
-  const lunchStart = 12 * 60;
-  const lunchEnd = 14 * 60;
-  const endMin = 18 * 60 + 30;
+  const lunchStart = WORK.lunchStart, lunchEnd = WORK.lunchEnd, goalMin = WORK.goal;
   document.querySelectorAll('.task-timer:not(.done):not(.lunch):not(.overtime)').forEach(timerEl => {
     let remainMin;
     if (nowMin < lunchStart) {
-      remainMin = (lunchStart - nowMin) + (endMin - lunchEnd);
+      remainMin = (lunchStart - nowMin) + (goalMin - lunchEnd);
     } else {
-      remainMin = endMin - nowMin;
+      remainMin = goalMin - nowMin;
     }
+    if (remainMin <= 0) { renderHomeDaily(); return; }
     const h = Math.floor(remainMin / 60);
     const m = Math.floor(remainMin % 60);
     const s = Math.floor((remainMin * 60) % 60);
@@ -1240,7 +1266,7 @@ async function askAI(presetQuestion) {
       body: JSON.stringify({
         model: cfg.model,
         messages: [
-          { role: 'system', content: '你是华焰天下电火灶品牌部的AI助手，服务对象是品牌部的拍摄剪辑师Alon。他制作电火灶信息流视频（面向经销商分发抖音/小红书/视频号）和口播产品宣传视频。回答要点：\n1. 关于产品热点、选题、文案的问题：给出具体可执行的建议，符合信息流视频调性\n2. 产品参数基于事实，不编造；禁绝对化用语（最/第一/100%等）；禁标题党\n3. 回答简洁实用，用短段落，重点内容加【】标注，控制在300字内' },
+          { role: 'system', content: '你是华焰天下电火灶品牌部的AI助手，名字叫「Huahuo豆花」，服务对象是品牌部的拍摄剪辑师 A总。A总制作电火灶信息流视频（面向经销商分发抖音/小红书/视频号）和口播产品宣传视频。回答要点：\n1. 每次回答开头自然称呼"A总"（例如"A总，……"），结尾不用再加称呼\n2. 关于产品热点、选题、文案的问题：给出具体可执行的建议，符合信息流视频调性\n3. 产品参数基于事实，不编造；禁绝对化用语（最/第一/100%等）；禁标题党\n4. 回答简洁实用，用短段落，重点内容加【】标注，控制在300字内' },
           ...aiChatHistory.slice(-8)
         ],
         temperature: 0.8,
@@ -1328,7 +1354,7 @@ function clearCalendarMemo() {
 function renderCalTasks() {
   const box = document.getElementById('calTasks');
   if (!box) return;
-  const list = data.dailyWork.filter(d => d.date === calSelected);
+  const list = sortTasks(data.dailyWork.filter(d => d.date === calSelected));
   const done = list.filter(d => d.done).length;
   box.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -1339,7 +1365,10 @@ function renderCalTasks() {
       <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border-soft)">
         <input type="checkbox" ${d.done ? 'checked' : ''} onchange="toggleCalTask('${d.id}')" style="margin-top:3px;accent-color:#111;cursor:pointer;width:14px;height:14px">
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;line-height:1.5;${d.done ? 'text-decoration:line-through;color:var(--text-mute)' : 'color:var(--text)'}">${escHtml(d.title)}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span class="priority-tag ${d.priority==='高'?'p-high':d.priority==='中'?'p-mid':'p-low'}" style="font-size:9px;padding:0 6px;line-height:16px">${d.priority||'中'}</span>
+            <span style="font-size:13px;line-height:1.5;${d.done ? 'text-decoration:line-through;color:var(--text-mute)' : 'color:var(--text)'}">${escHtml(d.title)}</span>
+          </div>
           ${d.note ? `<div style="font-size:11px;color:var(--text-mute);margin-top:2px">${escHtml(d.note)}</div>` : ''}
         </div>
         <button class="icon-btn" onclick="delCalTask('${d.id}')" title="删除任务" style="font-size:15px;line-height:1">×</button>
@@ -1366,7 +1395,7 @@ function addCalTask() {
   const inp = document.getElementById('calTaskInput');
   const title = inp.value.trim();
   if (!title) return;
-  data.dailyWork.unshift({ id: 'D' + data.seq.daily++, date: calSelected, title, done: false, note: '' });
+  data.dailyWork.unshift({ id: 'D' + data.seq.daily++, date: calSelected, title, done: false, note: '', priority: '中' });
   inp.value = '';
   save();
   renderCalendar();
@@ -1387,7 +1416,7 @@ function renderHotspots() {
   if (!box) return;
   const hs = data.hotspots;
   if (!hs.items.length) {
-    box.innerHTML = '<div class="empty" style="grid-column:1/-1;padding:24px"><div class="empty-icon" style="font-size:26px;margin-bottom:8px">🔥</div>今日热点还没生成，点右上角「刷新热点」让豆包整理</div>';
+    box.innerHTML = '<div class="empty" style="grid-column:1/-1;padding:24px"><div class="empty-icon" style="font-size:26px;margin-bottom:8px">🔥</div>今日热点还没生成，点右上角「刷新热点」让豆花整理</div>';
     return;
   }
   box.innerHTML = hs.items.map((it, i) => `
@@ -1406,7 +1435,7 @@ async function genHotspots() {
   const btn = document.getElementById('hotspotBtn');
   if (btn) { btn.disabled = true; btn.textContent = '生成中…'; }
   const box = document.getElementById('hotspotList');
-  box.innerHTML = '<div class="empty" style="grid-column:1/-1;padding:24px">⏳ 豆包正在整理今日热点…</div>';
+  box.innerHTML = '<div class="empty" style="grid-column:1/-1;padding:24px">⏳ 豆花正在整理今日热点…</div>';
   try {
     const resp = await fetch(`${cfg.baseUrl}/chat/completions`, {
       method: 'POST',
@@ -2310,7 +2339,7 @@ function renderDaily() {
       </div>
     </div>
     ${dates.map(date => {
-      const items = groups[date];
+      const items = sortTasks(groups[date]);
       const done = items.filter(d => d.done).length;
       const isToday = date === todayStr();
       return `
@@ -2324,7 +2353,10 @@ function renderDaily() {
             <div class="backup-item" style="padding:10px 0;align-items:flex-start;gap:12px;border-bottom:1px solid var(--border-soft)">
               <input type="checkbox" ${d.done?'checked':''} onchange="toggleDaily('${d.id}')" style="width:17px;height:17px;margin-top:2px;accent-color:var(--accent);cursor:pointer">
               <div style="flex:1;min-width:0">
-                <div style="font-size:13px;font-weight:500;color:${d.done?'var(--text-mute)':'var(--text)'};text-decoration:${d.done?'line-through':'none'}">${d.title}</div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <span class="priority-tag ${d.priority==='高'?'p-high':d.priority==='中'?'p-mid':'p-low'}" style="font-size:10px;padding:1px 7px">${d.priority||'中'}</span>
+                  <div style="font-size:13px;font-weight:500;color:${d.done?'var(--text-mute)':'var(--text)'};text-decoration:${d.done?'line-through':'none'}">${d.title}</div>
+                </div>
                 ${d.note?`<div style="font-size:11px;color:var(--text-soft);margin-top:3px">${d.note}</div>`:''}
               </div>
               <div style="display:flex;gap:2px">
@@ -2364,6 +2396,12 @@ function openDailyModal(editId) {
           <option value="true" ${d&&d.done?'selected':''}>已完成</option>
         </select>
       </div>
+      <div class="form-group">
+        <label class="form-label">优先级</label>
+        <select class="form-select" id="f_priority">
+          ${['高','中','低'].map(p=>`<option ${(d?d.priority:'中')===p?'selected':''}>${p}</option>`).join('')}
+        </select>
+      </div>
     </div>
     <div class="form-group"><label class="form-label">备注（可选）</label><input class="form-input" id="f_note" value="${d?d.note:''}" placeholder="补充说明"></div>
     <div class="modal-actions">
@@ -2379,6 +2417,7 @@ function saveDaily(id) {
     title,
     date: document.getElementById('f_date').value,
     done: document.getElementById('f_done').value === 'true',
+    priority: document.getElementById('f_priority').value,
     note: document.getElementById('f_note').value.trim(),
   };
   if (id) Object.assign(data.dailyWork.find(d => d.id === id), obj);
