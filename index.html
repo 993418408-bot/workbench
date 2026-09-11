@@ -303,6 +303,25 @@
     position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
     width: 4px; height: 4px; border-radius: 50%; background: currentColor;
   }
+  .cal-task-badge {
+    position: absolute; top: 2px; right: 4px;
+    font-size: 9px; line-height: 1; font-weight: 600;
+    padding: 2px 4px; border-radius: 6px;
+    background: rgba(0,0,0,0.12); color: var(--text);
+  }
+  .cal-day.active .cal-task-badge { background: rgba(255,255,255,0.25); color: #fff; }
+  .cal-task-badge.done { background: transparent; color: var(--text-mute); border: 1px solid var(--border); }
+  .cal-day.active .cal-task-badge.done { color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.3); }
+  /* ===== 封面单行复制 ===== */
+  .cover-box { background: var(--bg); border-radius: 6px; padding: 6px 12px; border-left: 2px solid var(--accent); margin: 10px 0; }
+  .cover-line {
+    font-size: 13px; line-height: 1.9; font-weight: 500; color: var(--text);
+    padding: 0 4px; margin: 0 -4px; border-radius: 4px;
+    cursor: copy; transition: background 0.12s;
+    width: fit-content; min-width: 100%;
+  }
+  .cover-line:hover { background: rgba(0,0,0,0.07); }
+  .cover-line:hover::after { content: ' ⧉ 复制本行'; font-size: 10px; color: #999; font-weight: 400; }
   .script-tooltip {
     position: fixed; z-index: 9999;
     background: #fff; border: 1px solid var(--border);
@@ -603,10 +622,12 @@
               <option value="30" selected>30 条</option>
             </select>
             <button class="btn btn-primary" id="genBtn" onclick="genCopies()">⚡ AI 生成文案</button>
+            <button class="btn" id="dailyBtn" onclick="genDailyCopies()" style="border:1px solid var(--accent)">📅 今日20条</button>
             <button class="btn" onclick="openApiConfig()" title="API配置">⚙</button>
             <span id="genStatus" style="font-size:11px;color:var(--text-soft)"></span>
             <span id="cfgStatus" style="font-size:11px;color:var(--tag-green)"></span>
           </div>
+          <div id="dailyStyleHint" style="font-size:11px;color:var(--text-mute);margin-top:-4px;margin-bottom:10px"></div>
           <div style="display:flex;gap:8px;align-items:center">
             <input class="search-input" id="copyCmd" placeholder="输入指令，如：生成30条安全科普维度、侧重防干烧功能的文案" style="flex:1;width:auto" value="生成电火灶信息流文案，封面文字3-4行，商业化书面语，突出功能参数卖点">
             <button class="btn" onclick="copyCmd()">复制指令</button>
@@ -754,6 +775,7 @@
               <button class="btn btn-primary" onclick="saveCalendarMemo()">保存</button>
               <button class="btn btn-ghost" onclick="clearCalendarMemo()">清空</button>
             </div>
+            <div id="calTasks" style="margin-top:16px;border-top:1px solid var(--border-soft);padding-top:12px"></div>
           </div>
         </div>
       </div>
@@ -850,7 +872,8 @@ const defaultData = {
   },
   seq: { topic: 4, review: 3, coop: 3, backup: 4, copy: 31, script: 4, daily: 5 },
   memos: {},
-  hotspots: { date: '', items: [] }
+  hotspots: { date: '', items: [] },
+  dailyCopyGen: { date: '', style: '', count: 0 }
 };
 
 function load() {
@@ -879,6 +902,7 @@ function load() {
     }
     if (!merged.memos) merged.memos = {};
     if (!merged.hotspots) merged.hotspots = { date: '', items: [] };
+    if (!merged.dailyCopyGen) merged.dailyCopyGen = { date: '', style: '', count: 0 };
     return merged;
   }
   catch(e) { return JSON.parse(JSON.stringify(defaultData)); }
@@ -1263,12 +1287,18 @@ function renderCalendar() {
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = fmtDate(calYear, calMonth, d);
     const hasMemo = data.memos[ds] && data.memos[ds].trim();
+    const tasks = data.dailyWork.filter(x => x.date === ds);
+    const tTotal = tasks.length;
+    const tLeft = tasks.filter(x => !x.done).length;
+    let badge = '';
+    if (tTotal) badge = `<span class="cal-task-badge ${tLeft === 0 ? 'done' : ''}" title="当天任务 ${tTotal - tLeft}/${tTotal}">${tLeft === 0 ? '✓' : tLeft}</span>`;
     const cls = ds === calSelected ? 'cal-day active' : ds === todayStr ? 'cal-day today' : 'cal-day';
-    html += `<div class="${cls}" onclick="selectCalDay('${ds}')">${d}${hasMemo?'<span class="cal-dot"></span>':''}</div>`;
+    html += `<div class="${cls}" onclick="selectCalDay('${ds}')">${d}${badge}${hasMemo?'<span class="cal-dot"></span>':''}</div>`;
   }
   html += '</div>';
   document.getElementById('calGrid').innerHTML = html;
   loadMemoInput();
+  renderCalTasks();
 }
 function loadMemoInput() {
   document.getElementById('memoDateTitle').textContent = calSelected + (calSelected === localDateStr() ? ' · 今天' : '');
@@ -1292,6 +1322,62 @@ function clearCalendarMemo() {
   document.getElementById('memoInput').value = '';
   renderCalendar();
   showToast('已清空该日备忘');
+}
+
+// ===== 日历当天任务（与首页打卡/工作归档同源数据）=====
+function renderCalTasks() {
+  const box = document.getElementById('calTasks');
+  if (!box) return;
+  const list = data.dailyWork.filter(d => d.date === calSelected);
+  const done = list.filter(d => d.done).length;
+  box.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <div style="font-size:13px;font-weight:600">当天任务${list.length ? `（${done}/${list.length}）` : ''}</div>
+      <div style="font-size:10px;color:var(--text-mute)">与首页打卡同步</div>
+    </div>
+    ${list.length ? list.map(d => `
+      <div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border-soft)">
+        <input type="checkbox" ${d.done ? 'checked' : ''} onchange="toggleCalTask('${d.id}')" style="margin-top:3px;accent-color:#111;cursor:pointer;width:14px;height:14px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;line-height:1.5;${d.done ? 'text-decoration:line-through;color:var(--text-mute)' : 'color:var(--text)'}">${escHtml(d.title)}</div>
+          ${d.note ? `<div style="font-size:11px;color:var(--text-mute);margin-top:2px">${escHtml(d.note)}</div>` : ''}
+        </div>
+        <button class="icon-btn" onclick="delCalTask('${d.id}')" title="删除任务" style="font-size:15px;line-height:1">×</button>
+      </div>`).join('') : '<div style="font-size:12px;color:var(--text-mute);padding:4px 0 8px">当天暂无任务，下方添加后首页打卡同步显示</div>'}
+    <div style="display:flex;gap:6px;margin-top:10px">
+      <input class="search-input" id="calTaskInput" placeholder="新增当天任务，回车添加" style="flex:1;width:auto" onkeydown="if(event.key==='Enter')addCalTask()">
+      <button class="btn btn-primary" style="padding:6px 12px;font-size:12px" onclick="addCalTask()">添加</button>
+    </div>`;
+}
+function syncHomeDaily() {
+  if (document.getElementById('homeDailyList')) renderHomeDaily();
+  if (typeof renderHome === 'function' && document.getElementById('page-home')) renderHome();
+}
+function toggleCalTask(id) {
+  const d = data.dailyWork.find(x => x.id === id);
+  if (!d) return;
+  d.done = !d.done;
+  save();
+  renderCalendar();
+  syncHomeDaily();
+  showToast(d.done ? '✓ 任务已完成' : '任务已恢复为未完成');
+}
+function addCalTask() {
+  const inp = document.getElementById('calTaskInput');
+  const title = inp.value.trim();
+  if (!title) return;
+  data.dailyWork.unshift({ id: 'D' + data.seq.daily++, date: calSelected, title, done: false, note: '' });
+  inp.value = '';
+  save();
+  renderCalendar();
+  syncHomeDaily();
+  showToast('已添加到 ' + calSelected);
+}
+function delCalTask(id) {
+  data.dailyWork = data.dailyWork.filter(d => d.id !== id);
+  save();
+  renderCalendar();
+  syncHomeDaily();
 }
 
 // ===== 抖音热点 + AI 灵感 =====
@@ -1528,6 +1614,7 @@ function renderCopies() {
   const cfg = data.aiConfig;
   const cfgEl = document.getElementById('cfgStatus');
   if (cfgEl) cfgEl.textContent = `🔗 ${cfg.model.slice(-12)} · ${cfg.apiKey.slice(0,8)}…`;
+  refreshDailyBtn();
   const toolbar = document.getElementById('copyToolbar');
   const filters = [
     {k:'all', label:'全部'}, {k:'硬核演示', label:'硬核演示'}, {k:'安全科普', label:'安全科普'},
@@ -1553,7 +1640,7 @@ function renderCopies() {
         </div>
         <button class="icon-btn" onclick="toggleFav('${c.id}')" title="收藏" style="font-size:16px">${c.favorite?'★':'☆'}</button>
       </div>
-      <div style="background:var(--bg);border-radius:6px;padding:10px 12px;border-left:2px solid var(--accent);margin:10px 0;font-size:13px;line-height:1.9;font-weight:500;color:var(--text)">${c.cover.replace(/\n/g,'<br>')}</div>
+      <div class="cover-box" title="点击任意一行可单独复制">${c.cover.split('\n').map(line => `<div class="cover-line" onclick="copyLine(this)">${escHtml(line)}</div>`).join('')}</div>
       <div class="coop-actions">
         <button class="task-action-btn" onclick="copyCover('${c.id}')">复制封面</button>
         <button class="task-action-btn" onclick="editCopy('${c.id}')">编辑</button>
@@ -1657,6 +1744,139 @@ async function genCopies() {
   } finally {
     btn.disabled = false; btn.style.opacity = '1';
     setTimeout(() => { status.textContent = ''; status.style.color = ''; }, 6000);
+  }
+}
+
+// ===== 每日 20 条（7 种风格按日轮换，分 2 批生成）=====
+const DAILY_STYLES = [
+  { name:'硬核演示', brief:'功能参数直给：出火速度、火力、热效率、功率等硬核卖点，演示视角，数字说话' },
+  { name:'安全科普', brief:'安全机制切入：离锅断火、防干烧、童锁、无燃气泄漏、认证检测等，讲清防护逻辑' },
+  { name:'生活场景', brief:'真实生活场景切入：租房、开放式厨房、露营、房车、老人做饭等，场景带出解决方案' },
+  { name:'品牌故事', brief:'品牌实力表达：自研专利、技术积累、认证背书、出海等，克制陈述不吹嘘' },
+  { name:'用户证言', brief:'用户口碑口吻：第三人称使用后的直观感受与评价关键词，像真实买家总结，不像硬广' },
+  { name:'痛点反差', brief:'痛点对比结构：先点传统燃气/煤气罐/电磁炉的具体麻烦，再给电火灶对应的解决点' },
+  { name:'创意混合', brief:'创意混搭：设问句、数字对比、反常识结论等多种开头轮换，节奏轻快但不标题党' }
+];
+function todayStyle() {
+  const base = Date.parse('2026-09-11');
+  const cur = Date.parse(localDateStr());
+  const idx = ((Math.round((cur - base) / 86400000)) % 7 + 7) % 7;
+  return { idx, ...DAILY_STYLES[idx] };
+}
+function refreshDailyBtn() {
+  const btn = document.getElementById('dailyBtn');
+  const hint = document.getElementById('dailyStyleHint');
+  if (!btn || !hint) return;
+  const st = todayStyle();
+  const done = data.dailyCopyGen.date === todayStr();
+  btn.textContent = done ? `✓ 今日已生成 ${data.dailyCopyGen.count} 条` : `📅 今日20条 · ${st.name}`;
+  btn.disabled = false;
+  btn.style.opacity = done ? '0.7' : '1';
+  hint.innerHTML = `今日风格：<b style="color:var(--text)">${st.name}</b>（7 种风格每日自动轮换）${done ? ' · 今日已生成，点击可重新生成' : ''}<br>结合当日 AI 热点风向、分 2 批生成。热点为豆包基于抖音近期内容生态整理的风向参考，非实时榜单数据。`;
+}
+async function genDailyCopies() {
+  const cfg = data.aiConfig;
+  if (!cfg.baseUrl || !cfg.apiKey || !cfg.model) {
+    showToast('请先在文案库点 ⚙ 配置豆包 API Key', '#555555'); return;
+  }
+  const st = todayStyle();
+  if (data.dailyCopyGen.date === todayStr()) {
+    if (!confirm(`今日已生成过 ${data.dailyCopyGen.count} 条（风格：${data.dailyCopyGen.style}）。\n再生成一次会消耗接口额度，确定继续？`)) return;
+  }
+
+  const btn = document.getElementById('dailyBtn');
+  const status = document.getElementById('genStatus');
+  btn.disabled = true;
+  const setMsg = (m, color) => { status.textContent = m; status.style.color = color || 'var(--text-soft)'; };
+
+  // 当日热点风向（仅在今天已生成热点时带入）
+  const hs = data.hotspots.date === todayStr() ? data.hotspots.items : [];
+  const hotText = hs.length ?
+    `\n【今日热点风向参考】${hs.map((h,i) => `${i+1}.${h.topic}（可借角度：${h.angle}）`).join('；')}\n其中最多 2 条可自然借热点角度，但不要直接出现热点事件名称，保持产品文案属性。` : '';
+
+  const sys = `你是华焰天下电火灶信息流文案写手，为经销商分发到各平台用。
+【输出格式】每条严格按以下格式，不加序号、不加解释：
+---
+维度：硬核演示
+封面：第一行/第二行/第三行/第四行
+---
+
+【硬性要求】
+1. 封面文字 3-4 行，每行 ≤8 字
+2. 商业化书面语，只写功能/参数/卖点/口碑，禁场景画面描写
+3. 参数必须真实（220V 家用电、火焰中心约 1300℃、热效率约 75-90%、300+ 项专利、远销 40+ 国家等），不得编造
+4. 禁绝对化用语（最/第一/100%/绝对等），禁标题党
+5. 维度只能是：硬核演示、安全科普、生活场景、品牌故事
+6. 每条之间用 --- 分隔`;
+
+  const buildUser = (batch, avoidLines) => `今天是 ${todayStr()}。请生成第 ${batch} 批，共 10 条电火灶信息流封面文案。
+【今日写作风格】${st.name}：${st.brief}
+【维度配比】10 条尽量覆盖 4 个维度（硬核演示、安全科普、生活场景、品牌故事）${hotText}
+${avoidLines.length ? '【避免重复】以下封面已存在，请换角度、换措辞，不要重复或高度相似：\n' + avoidLines.slice(0, 40).map(l => '· ' + l.replace(/\n/g, '/')).join('\n') : ''}
+严格按格式输出 10 条。`;
+
+  const callBatch = async (batch) => {
+    setMsg(`⏳ 正在生成第 ${batch}/2 批（每批 10 条）…`);
+    const avoid = data.copies.map(c => c.cover);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000);
+    const resp = await fetch(`${cfg.baseUrl.replace(/\/$/, '')}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${cfg.apiKey}` },
+      body: JSON.stringify({
+        model: cfg.model,
+        messages: [
+          { role: 'system', content: sys },
+          { role: 'user', content: buildUser(batch, avoid) }
+        ],
+        temperature: 0.9,
+        max_tokens: 700,
+        thinking: { type: "disabled" }
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if (!resp.ok) {
+      let errMsg = `HTTP ${resp.status}`;
+      try { const err = await resp.json(); errMsg = err.error?.message || errMsg; } catch {}
+      throw new Error(`API 错误：${errMsg}`);
+    }
+    const json = await resp.json();
+    const content = json.choices?.[0]?.message?.content || '';
+    const parsed = parseAiCopies(content, 'all');
+    if (!parsed.length) throw new Error('第 ' + batch + ' 批返回格式异常，请重试');
+    const existing = new Set(data.copies.map(c => c.cover));
+    const fresh = parsed.filter(c => !existing.has(c.cover));
+    fresh.forEach(c => { c.id = 'W' + data.seq.copy++; c.favorite = false; data.copies.unshift(c); });
+    save(); renderCopies();
+    return { got: parsed.length, added: fresh.length };
+  };
+
+  let totalAdded = 0;
+  try {
+    const r1 = await callBatch(1);
+    totalAdded += r1.added;
+    setMsg(`✅ 第 1 批完成（新增 ${r1.added} 条），正在生成第 2 批…`);
+    const r2 = await callBatch(2);
+    totalAdded += r2.added;
+
+    data.dailyCopyGen = { date: todayStr(), style: st.name, count: totalAdded };
+    save(); renderCopies();
+    const dup = 20 - totalAdded;
+    status.textContent = `✅ 今日 20 条完成，新增 ${totalAdded} 条${dup > 0 ? `（${dup} 条与库内重复已跳过）` : ''}`;
+    status.style.color = 'var(--tag-green)';
+    showToast(`今日 20 条已生成（${st.name}风格），新增 ${totalAdded} 条`);
+  } catch(e) {
+    let msg = e.message;
+    if (e.name === 'AbortError') msg = '请求超时（90秒），已保留已生成的部分，请重试补齐';
+    else if (e.message.includes('Failed to fetch')) msg = '网络错误，请检查网络后重试';
+    status.textContent = '❌ ' + msg + (totalAdded ? `（已保留第 1 批新增 ${totalAdded} 条）` : '');
+    status.style.color = '#333333';
+    showToast('生成失败：' + msg, '#333333');
+    console.error('每日20条生成失败：', e);
+  } finally {
+    btn.disabled = false;
+    setTimeout(() => { status.textContent = ''; status.style.color = ''; }, 8000);
   }
 }
 
@@ -1812,8 +2032,27 @@ async function testApi() {
 function copyCover(id) {
   const c = data.copies.find(x => x.id === id);
   if (!c) return;
-  if (navigator.clipboard) navigator.clipboard.writeText(c.cover).then(() => showToast('封面文字已复制'));
-  else showToast('复制失败', '#333333');
+  copyText(c.cover, '封面文字已复制');
+}
+function copyLine(el) {
+  const line = el.textContent.trim();
+  if (!line) return;
+  copyText(line, `已复制：${line.length > 10 ? line.slice(0, 10) + '…' : line}`);
+}
+function copyText(text, okMsg) {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(() => showToast(okMsg)).catch(() => fallbackCopy(text, okMsg));
+  } else {
+    fallbackCopy(text, okMsg);
+  }
+}
+function fallbackCopy(text, okMsg) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); showToast(okMsg); }
+  catch(e) { showToast('复制失败，请手动选择复制', '#333333'); }
+  document.body.removeChild(ta);
 }
 function toggleFav(id) {
   const c = data.copies.find(x => x.id === id);
