@@ -1191,11 +1191,11 @@ function renderHomeDaily() {
   const nowMin = now.getHours() * 60 + now.getMinutes() + now.getSeconds()/60;
   const startMin = WORK.start, lunchStart = WORK.lunchStart, lunchEnd = WORK.lunchEnd;
   const goalMin = WORK.goal, endMin = WORK.end;
-  const isWeekday = now.getDay() >= 1 && now.getDay() <= 5;
-  const isWorkTime = isWeekday && ((nowMin >= startMin && nowMin < lunchStart) || (nowMin >= lunchEnd && nowMin < goalMin));
-  const isLunch = isWeekday && nowMin >= lunchStart && nowMin < lunchEnd;
-  const isOverGoal = isWeekday && nowMin >= goalMin && nowMin < endMin;
-  const isAfterEnd = isWeekday && nowMin >= endMin;
+  const isWorkday = now.getDay() !== 0; // 周一至周六上班，仅周日休息
+  const isWorkTime = isWorkday && ((nowMin >= startMin && nowMin < lunchStart) || (nowMin >= lunchEnd && nowMin < goalMin));
+  const isLunch = isWorkday && nowMin >= lunchStart && nowMin < lunchEnd;
+  const isOverGoal = isWorkday && nowMin >= goalMin && nowMin < endMin;
+  const isAfterEnd = isWorkday && nowMin >= endMin;
 
   el.innerHTML = list.map(d => {
     let timerHtml = '';
@@ -1221,8 +1221,10 @@ function renderHomeDaily() {
       timerHtml = `<div class="task-timer overtime"><span class="timer-label">⏰ 已过18:00目标，请收尾</span></div>`;
     } else if (isAfterEnd) {
       timerHtml = `<div class="task-timer overtime"><span class="timer-label">⏰ 已超下班时间18:30</span></div>`;
-    } else if (isWeekday && nowMin < startMin) {
+    } else if (isWorkday && nowMin < startMin) {
       timerHtml = `<div class="task-timer"><span class="timer-label">⏰ 9:30开始</span></div>`;
+    } else if (!isWorkday) {
+      timerHtml = `<div class="task-timer lunch"><span class="timer-label">🎉 周日休息</span></div>`;
     }
     const p = d.priority || '中';
     return `
@@ -1256,13 +1258,13 @@ function startWorkCountdown() {
   startHighPriorityOvertimeCheck();
 }
 
-// 每小时整点提醒：工作时间（非午休非周末）每到整点 toast 进度
+// 每小时整点提醒：工作时间（非午休非周日）每到整点 toast 进度
 let lastHourReminder = -1;
 function startHourlyReminder() {
   setInterval(function() {
     var now = new Date();
     var day = now.getDay();
-    if (day === 0 || day === 6) return; // 周末不打扰
+    if (day === 0) return; // 周日休息不打扰（周六正常上班）
     var nowMin = now.getHours() * 60 + now.getMinutes();
     var startMin = WORK.start, lunchStart = WORK.lunchStart, lunchEnd = WORK.lunchEnd, goalMin = WORK.goal;
     // 工作时段内（排除午休），且过了9:30且未到18:00
@@ -1302,7 +1304,7 @@ function startHighPriorityOvertimeCheck() {
   setInterval(function() {
     var now = new Date();
     var day = now.getDay();
-    if (day === 0 || day === 6) return;
+    if (day === 0) return; // 周日休息（周六正常上班）
     var nowMin = now.getHours() * 60 + now.getMinutes();
     var goalMin = WORK.goal, endMin = WORK.end;
     if (nowMin < goalMin || nowMin >= endMin) return; // 18:00-18:30之间才警告
@@ -1326,17 +1328,17 @@ function updateWorkCountdown() {
   if (document.getElementById('homeDailyList')) renderHomeDailyTimers();
   const now = new Date();
   const today = now.getDay();
-  const isWeekend = today === 0 || today === 6;
+  const isRestDay = today === 0; // 仅周日休息，周六正常上班
   const startMin = WORK.start, lunchStart = WORK.lunchStart, lunchEnd = WORK.lunchEnd;
   const goalMin = WORK.goal, endMin = WORK.end;
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const workTotalMin = (lunchStart - startMin) + (goalMin - lunchEnd);
 
   let html = '';
-  if (isWeekend) {
-    html = `<div style="font-size:11px;opacity:0.8;margin-bottom:4px">周末休息</div>
+  if (isRestDay) {
+    html = `<div style="font-size:11px;opacity:0.8;margin-bottom:4px">周日休息</div>
             <div style="font-size:20px;font-weight:700">🎉 休息日</div>
-            <div style="font-size:10px;opacity:0.7;margin-top:6px">工作时间 09:30-12:00 / 13:30-18:30 · 目标18:00完成</div>`;
+            <div style="font-size:10px;opacity:0.7;margin-top:6px">明天（周一）09:30 上班 · 工作时间 09:30-12:00 / 13:30-18:30 · 目标18:00完成</div>`;
   } else if (nowMin < startMin) {
     const diff = startMin - nowMin;
     const h = Math.floor(diff / 60);
@@ -3271,7 +3273,7 @@ function startHealthReminder() {
   setInterval(function() {
     var now = new Date();
     var day = now.getDay();
-    if (day === 0 || day === 6) return;
+    if (day === 0) return; // 周日休息不提醒（周六正常上班）
     var nowMin = now.getHours() * 60 + now.getMinutes();
     var inWork = (nowMin >= WORK.start && nowMin < WORK.lunchStart) || (nowMin >= WORK.lunchEnd && nowMin < WORK.goal);
     if (!inWork) return;
