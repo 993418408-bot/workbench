@@ -1130,7 +1130,7 @@ function renderHome() {
     const highNames = data.dailyWork.filter(d => d.date === todayStr() && !d.done && d.priority === '高').map(d => d.title).slice(0,3).join('、');
     reminders.unshift({dot:'#FF3B30', title:`⚠️ ${todayHigh} 项高优先级任务已超18:00目标`, desc:`A总，超时任务：${highNames}，请立即处理收尾`, action:'打卡', cls:'daily'});
   } else if (todayHigh) {
-    reminders.unshift({dot:'#FF3B30', title:`今日有 ${todayHigh} 项高优先级任务待完成`, desc:'A总，高优先级任务建议优先处理，确保18:00前完成。', action:'打卡', cls:'daily'});
+    reminders.unshift({dot:'#FF3B30', title:`今日有 ${todayHigh} 项高优先级任务待完成`, desc:'A总，高优任务优先处理，14:00 起每小时整点催办，确保18:00前完成。', action:'打卡', cls:'daily'});
   }
   const todayTasks = data.dailyWork.filter(d => d.date === todayStr() && !d.done).length;
   if (todayTasks) reminders.push({dot:'var(--tag-blue)', title:`今日还有 ${todayTasks} 项工作待完成`, desc:'前往日常工作打卡完成。', action:'打卡', cls:'daily'});
@@ -1154,7 +1154,7 @@ function renderHome() {
 // ===== 首页今日工作打卡 =====
 // 工作时间：上午 09:30-12:00 / 午休 12:00-13:30 / 下午 13:30-18:30
 // A总每日目标 18:00 前完成工作，所有倒计时按 18:00 提醒
-const WORK = { start: 9*60+30, lunchStart: 12*60, lunchEnd: 13*60+30, goal: 18*60, end: 18*60+30 };
+const WORK = { start: 9*60+30, lunchStart: 12*60, lunchEnd: 13*60+30, highStart: 14*60, goal: 18*60, end: 18*60+30 };
 const PRIORITY_ORDER = { '高': 0, '中': 1, '低': 2 };
 function sortTasks(arr) {
   return arr.slice().sort((a, b) => {
@@ -1254,8 +1254,8 @@ function startWorkCountdown() {
   workCountdownTimer = setInterval(updateWorkCountdown, 1000);
   // 每小时进度提醒
   startHourlyReminder();
-  // 高优超时检查
-  startHighPriorityOvertimeCheck();
+  // 高优先级工作提醒（14:00起每小时催办 + 18:00后超时警告）
+  startHighPriorityCheck();
 }
 
 // 每小时整点提醒：工作时间（非午休非周日）每到整点 toast 进度
@@ -1298,27 +1298,38 @@ function startHourlyReminder() {
   }, 30000); // 每30秒检查一次
 }
 
-// 高优任务超时红色警告：18:00后如有高优未完成，每3分钟提醒一次
+// 高优先级工作提醒：14:00-18:00 每小时整点催办一次；18:00-18:30 超时每3分钟红色警告
+let lastHighHour = -1;
 let lastOvertimeWarn = -1;
-function startHighPriorityOvertimeCheck() {
+function startHighPriorityCheck() {
   setInterval(function() {
     var now = new Date();
     var day = now.getDay();
     if (day === 0) return; // 周日休息（周六正常上班）
     var nowMin = now.getHours() * 60 + now.getMinutes();
-    var goalMin = WORK.goal, endMin = WORK.end;
-    if (nowMin < goalMin || nowMin >= endMin) return; // 18:00-18:30之间才警告
+    var highStart = WORK.highStart, goalMin = WORK.goal, endMin = WORK.end;
+    if (nowMin < highStart || nowMin >= endMin) return;
     var today = todayStr();
     var highUndone = data.dailyWork.filter(function(d) {
       return d.date === today && !d.done && d.priority === '高';
     });
     if (highUndone.length === 0) return;
-    // 每3分钟提醒一次（以分钟数除3取余为0）
-    if (now.getMinutes() % 3 !== 0) return;
-    if (nowMin === lastOvertimeWarn) return;
-    lastOvertimeWarn = nowMin;
     var names = highUndone.map(function(d) { return d.title; }).slice(0, 3).join('、');
-    showToast('⚠️ A总，' + highUndone.length + ' 项高优先级任务已超18:00目标：' + names, '#FF3B30');
+    if (nowMin < goalMin) {
+      // 14:00-18:00：每小时整点提醒一次
+      if (now.getMinutes() !== 0) return;
+      var hour = now.getHours();
+      if (hour === lastHighHour) return;
+      lastHighHour = hour;
+      var remainH = Math.floor((goalMin - nowMin) / 60);
+      showToast('🔴 A总，' + highUndone.length + ' 项高优先级工作未完成：' + names + '。距18:00目标还剩 ' + remainH + ' 小时，请优先处理', '#FF9500');
+    } else {
+      // 18:00-18:30：每3分钟红色警告一次
+      if (now.getMinutes() % 3 !== 0) return;
+      if (nowMin === lastOvertimeWarn) return;
+      lastOvertimeWarn = nowMin;
+      showToast('⚠️ A总，' + highUndone.length + ' 项高优先级任务已超18:00目标：' + names, '#FF3B30');
+    }
   }, 30000);
 }
 function updateWorkCountdown() {
